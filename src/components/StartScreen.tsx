@@ -44,9 +44,6 @@ export function StartScreen() {
           <div className="text-6xl font-bold text-danger" style={{ textShadow: '0 0 20px rgba(220, 38, 38, 0.8)' }}>
             {victimCount.toLocaleString('ru-RU')}
           </div>
-          <div className="text-sm mt-3 opacity-80">
-            +1 каждые 2.5 секунды
-          </div>
         </div>
         
         <p className="text-lg mb-8 opacity-90 max-w-2xl mx-auto">
