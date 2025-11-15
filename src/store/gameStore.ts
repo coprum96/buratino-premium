@@ -23,6 +23,7 @@ interface GameState {
   
   // Counters
   globalCitizensCount: number;
+  victimCount: number;
   
   // Actions
   setPhase: (phase: GamePhase) => void;
@@ -51,6 +52,7 @@ export const useGameStore = create<GameState>((set) => ({
   phase: 'landing',
   showMaterialsPanel: false,
   globalCitizensCount: 0,
+  victimCount: 13495302,
   
   // Actions
   setPhase: (phase) => set({ phase }),

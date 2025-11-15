@@ -12,7 +12,7 @@ export function MaterialsPanel() {
   if (!showMaterialsPanel) {
     return (
       <button
-        className="fixed top-28 right-5 z-40 btn bg-secondary hover:scale-110"
+        className="fixed top-4 left-4 sm:top-5 sm:left-5 z-40 btn bg-secondary hover:scale-110 text-sm sm:text-base shadow-lg"
         onClick={toggleMaterialsPanel}
       >
         📖 Справка

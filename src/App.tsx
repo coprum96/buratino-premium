@@ -18,6 +18,17 @@ function App() {
     document.body.style.minHeight = '100vh';
   }, []);
   
+  // Global victim counter - always running
+  useEffect(() => {
+    const timer = setInterval(() => {
+      useGameStore.setState((state) => ({
+        victimCount: state.victimCount + 1
+      }));
+    }, 2500); // Every 2.5 seconds
+    
+    return () => clearInterval(timer);
+  }, []);
+  
   return (
     <>
       {/* Gradient Background */}
