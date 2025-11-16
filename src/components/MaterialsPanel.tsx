@@ -12,10 +12,25 @@ export function MaterialsPanel() {
   if (!showMaterialsPanel) {
     return (
       <button
-        className="fixed top-4 left-4 sm:top-5 sm:left-5 z-40 btn bg-secondary hover:scale-110 text-sm sm:text-base shadow-lg"
+        className="fixed top-4 left-4 sm:top-5 sm:left-5 z-40 bg-gradient-to-br from-secondary to-orange-600 hover:from-orange-600 hover:to-secondary p-3 sm:p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 group"
         onClick={toggleMaterialsPanel}
+        aria-label="Справка"
+        title="Справка и образовательные материалы"
       >
-        📖 Справка
+        {/* SVG Icon - Question Mark in Circle */}
+        <svg 
+          className="w-6 h-6 sm:w-7 sm:h-7 text-white group-hover:rotate-12 transition-transform duration-300" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth={2.5} 
+            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+          />
+        </svg>
       </button>
     );
   }
