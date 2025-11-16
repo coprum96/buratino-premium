@@ -12,14 +12,14 @@ export function MaterialsPanel() {
   if (!showMaterialsPanel) {
     return (
       <button
-        className="fixed top-4 left-4 sm:top-5 sm:left-5 z-40 bg-gradient-to-br from-secondary to-orange-600 hover:from-orange-600 hover:to-secondary p-3 sm:p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 group"
+        className="fixed top-3 left-3 sm:top-4 sm:left-4 z-50 bg-gradient-to-br from-secondary to-orange-600 hover:from-orange-600 hover:to-secondary p-2 sm:p-2.5 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all duration-300 group border border-orange-400/20"
         onClick={toggleMaterialsPanel}
         aria-label="Справка"
         title="Справка и образовательные материалы"
       >
         {/* SVG Icon - Question Mark in Circle */}
         <svg 
-          className="w-6 h-6 sm:w-7 sm:h-7 text-white group-hover:rotate-12 transition-transform duration-300" 
+          className="w-5 h-5 sm:w-6 sm:h-6 text-white group-hover:rotate-12 transition-transform duration-300" 
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
