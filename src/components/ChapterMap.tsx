@@ -1,5 +1,6 @@
 import { useGameStore } from '../store/gameStore';
 import { levels } from '../data/gameData';
+import { FaBook, FaCheckCircle, FaStar, FaLock, FaCoins, FaTheaterMasks, FaCalculator, FaBoxes, FaChartLine, FaBullseye, FaFileAlt, FaTrophy } from 'react-icons/fa';
 
 export function ChapterMap() {
   const { currentLevel, setPhase, completedLevels } = useGameStore();
@@ -14,8 +15,9 @@ export function ChapterMap() {
   return (
     <div className="min-h-screen pt-28 pb-10">
       <div className="container max-w-6xl mx-auto px-5">
-        <h1 className="text-5xl font-bold mb-12 text-center text-shadow-glow animate-scale-in">
-          📚 Карта приключений
+        <h1 className="text-5xl font-bold mb-12 text-center text-shadow-glow animate-scale-in flex items-center justify-center gap-3">
+          <FaBook className="text-primary" />
+          Карта приключений
         </h1>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -36,20 +38,29 @@ export function ChapterMap() {
                 onClick={() => handleChapterClick(index)}
               >
                 {isCompleted && (
-                  <div className="absolute top-4 right-4 text-4xl animate-scale-in">
-                    ✅
+                  <div className="absolute top-4 right-4 text-4xl animate-scale-in text-success">
+                    <FaCheckCircle />
                   </div>
                 )}
                 
                 {isCurrent && !isCompleted && (
-                  <div className="absolute top-4 right-4 text-4xl animate-float">
-                    ⭐
+                  <div className="absolute top-4 right-4 text-4xl animate-float text-yellow-400">
+                    <FaStar />
                   </div>
                 )}
                 
                 <div className="text-center">
                   <div className="text-6xl mb-4 animate-float">
-                    {['🪙', '🎭', '🧮', '🧺', '📊', '🎯', '📋', '🏆'][index]}
+                    {[
+                      <FaCoins key="coin" className="mx-auto text-yellow-400" />,
+                      <FaTheaterMasks key="theater" className="mx-auto text-pink-400" />,
+                      <FaCalculator key="calc" className="mx-auto text-orange-400" />,
+                      <FaBoxes key="boxes" className="mx-auto text-teal-400" />,
+                      <FaChartLine key="chart" className="mx-auto text-blue-400" />,
+                      <FaBullseye key="target" className="mx-auto text-red-400" />,
+                      <FaFileAlt key="file" className="mx-auto text-purple-400" />,
+                      <FaTrophy key="trophy" className="mx-auto text-yellow-500" />
+                    ][index]}
                   </div>
                   
                   <h3 className="text-2xl font-bold mb-2">
@@ -65,8 +76,9 @@ export function ChapterMap() {
                   </p>
                   
                   {!isAvailable && (
-                    <div className="mt-4 text-sm opacity-70">
-                      🔒 Заблокировано
+                    <div className="mt-4 text-sm opacity-70 flex items-center justify-center gap-2">
+                      <FaLock />
+                      Заблокировано
                     </div>
                   )}
                   

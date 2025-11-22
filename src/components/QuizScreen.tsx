@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { levels } from '../data/gameData';
 import { createParticleBurst } from '../utils/particles';
+import { FaChartBar, FaTrophy, FaBullseye, FaBook, FaCheckCircle, FaTimesCircle, FaArrowRight } from 'react-icons/fa';
 
 export function QuizScreen() {
   const { currentLevel, addWisdom, completeLevel } = useGameStore();
@@ -65,20 +66,25 @@ export function QuizScreen() {
         <div className="container max-w-2xl mx-auto px-5">
           <div className="glass-card text-center animate-scale-in">
             <h2 className="text-4xl font-bold mb-6">Результаты теста</h2>
-            <div className="text-7xl mb-6">📊</div>
+            <div className="text-7xl mb-6 flex justify-center">
+              <FaChartBar className="text-primary" />
+            </div>
             <p className="text-3xl mb-4">
               Правильных ответов: {score} из {questions.length}
             </p>
             <p className="text-2xl mb-6">{percentage}%</p>
             
-            <div className="text-2xl p-4 bg-primary/30 rounded-xl mb-8">
-              {percentage >= 80 ? '🏆 Отлично!' : percentage >= 60 ? '🎯 Хорошо!' : '📚 Продолжай учиться!'}
+            <div className="text-2xl p-4 bg-primary/30 rounded-xl mb-8 flex items-center justify-center gap-3">
+              {percentage >= 80 ? <><FaTrophy className="text-yellow-400" /> Отлично!</> : 
+               percentage >= 60 ? <><FaBullseye className="text-blue-400" /> Хорошо!</> : 
+               <><FaBook className="text-purple-400" /> Продолжай учиться!</>}
             </div>
             
             <button 
-              className="btn btn-primary"
+              className="btn btn-primary flex items-center gap-2 mx-auto"
               onClick={handleComplete}
             >
+              <FaArrowRight />
               Продолжить
             </button>
           </div>
@@ -130,8 +136,8 @@ export function QuizScreen() {
                     {String.fromCharCode(65 + index)}
                   </span>
                   <span className="flex-1 break-words word-wrap leading-relaxed">{option}</span>
-                  {showStatus && isCorrect && <span className="text-2xl sm:text-3xl flex-shrink-0">✅</span>}
-                  {showStatus && isSelected && !isCorrect && <span className="text-2xl sm:text-3xl flex-shrink-0">❌</span>}
+                  {showStatus && isCorrect && <FaCheckCircle className="text-2xl sm:text-3xl flex-shrink-0 text-success" />}
+                  {showStatus && isSelected && !isCorrect && <FaTimesCircle className="text-2xl sm:text-3xl flex-shrink-0 text-danger" />}
                 </button>
               );
             })}
@@ -139,7 +145,10 @@ export function QuizScreen() {
           
           {showExplanation && question.explanation && (
             <div className="mt-6 p-4 sm:p-5 bg-primary/20 border-2 border-primary/40 rounded-xl animate-slide-in-bottom">
-              <div className="text-lg sm:text-xl font-bold mb-2 break-words">💡 Объяснение:</div>
+              <div className="text-lg sm:text-xl font-bold mb-2 break-words flex items-center gap-2">
+                <FaBook className="text-primary" />
+                Объяснение:
+              </div>
               <p className="text-base sm:text-lg break-words word-wrap leading-relaxed">{question.explanation}</p>
             </div>
           )}

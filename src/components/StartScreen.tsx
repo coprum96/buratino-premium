@@ -1,4 +1,5 @@
 import { useGameStore } from '../store/gameStore';
+import { FaSearch, FaExclamationTriangle, FaPlay } from 'react-icons/fa';
 
 export function StartScreen() {
   const { setPhase, incrementCitizensCount, victimCount } = useGameStore();
@@ -22,8 +23,9 @@ export function StartScreen() {
         </div>
         
         {/* Title */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-3 sm:mb-4 text-shadow-glow animate-float px-2">
-          🔍 Золотой Детектор
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-3 sm:mb-4 text-shadow-glow animate-float px-2 flex items-center justify-center gap-3 sm:gap-4">
+          <FaSearch className="text-yellow-400" />
+          Золотой Детектор
         </h1>
         
         {/* Subtitle */}
@@ -33,8 +35,9 @@ export function StartScreen() {
         
         {/* Victim Counter */}
         <div className="mb-6 sm:mb-8 p-4 sm:p-5 md:p-6 bg-danger/20 backdrop-blur-lg rounded-2xl border-2 border-danger/50 animate-pulse max-w-3xl mx-auto">
-          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-2 sm:mb-3 px-2">
-            ⚠️ ЖЕРТВ ФИНАНСОВОГО МОШЕННИЧЕСТВА В РФ:
+          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-2 sm:mb-3 px-2 flex items-center justify-center gap-2">
+            <FaExclamationTriangle className="text-danger animate-pulse" />
+            ЖЕРТВ ФИНАНСОВОГО МОШЕННИЧЕСТВА В РФ:
           </div>
           <div 
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-danger" 
@@ -52,10 +55,11 @@ export function StartScreen() {
         
         {/* Start Button */}
         <button 
-          className="btn btn-primary text-base sm:text-lg md:text-xl px-6 sm:px-8 py-3 sm:py-4"
+          className="btn btn-primary text-base sm:text-lg md:text-xl px-6 sm:px-8 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 mx-auto"
           onClick={handleStart}
         >
-          ✨ Начать приключение
+          <FaPlay />
+          Начать приключение
         </button>
       </div>
     </div>

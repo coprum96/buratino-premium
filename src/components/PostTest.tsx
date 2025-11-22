@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { postTest } from '../data/gameData';
+import { FaGraduationCap, FaTrophy, FaBullseye, FaBook, FaCheckCircle, FaTimesCircle, FaArrowRight } from 'react-icons/fa';
 
 export function PostTest() {
   const { setPostTestScore, setPhase } = useGameStore();
@@ -49,22 +50,25 @@ export function PostTest() {
         <div className="container max-w-2xl mx-auto px-5">
           <div className="glass-card text-center animate-scale-in">
             <h2 className="text-4xl font-bold mb-6">Финальный тест завершён!</h2>
-            <div className="text-7xl mb-6">🎓</div>
+            <div className="text-7xl mb-6 flex justify-center">
+              <FaGraduationCap className="text-primary" />
+            </div>
             <p className="text-3xl mb-4">
               Правильных ответов: {score} из {postTest.length}
             </p>
             <p className="text-2xl mb-6">{percentage}%</p>
             
-            <div className="text-2xl p-4 bg-primary/30 rounded-xl mb-8">
-              {percentage >= 80 ? '🏆 Отлично! Ты настоящий эксперт!' : 
-               percentage >= 60 ? '🎯 Хорошо! Продолжай учиться!' : 
-               '📚 Неплохо! Повтори материалы!'}
+            <div className="text-2xl p-4 bg-primary/30 rounded-xl mb-8 flex items-center justify-center gap-3">
+              {percentage >= 80 ? <><FaTrophy className="text-yellow-400" /> Отлично! Ты настоящий эксперт!</> : 
+               percentage >= 60 ? <><FaBullseye className="text-blue-400" /> Хорошо! Продолжай учиться!</> : 
+               <><FaBook className="text-purple-400" /> Неплохо! Повтори материалы!</>}
             </div>
             
             <button 
-              className="btn btn-primary"
+              className="btn btn-primary flex items-center gap-2 mx-auto"
               onClick={handleComplete}
             >
+              <FaArrowRight />
               Завершить игру
             </button>
           </div>
@@ -116,8 +120,8 @@ export function PostTest() {
                     {String.fromCharCode(65 + index)}
                   </span>
                   <span className="flex-1 break-words word-wrap leading-relaxed">{option}</span>
-                  {showStatus && isCorrect && <span className="text-2xl sm:text-3xl flex-shrink-0">✅</span>}
-                  {showStatus && isSelected && !isCorrect && <span className="text-2xl sm:text-3xl flex-shrink-0">❌</span>}
+                  {showStatus && isCorrect && <FaCheckCircle className="text-2xl sm:text-3xl flex-shrink-0 text-success" />}
+                  {showStatus && isSelected && !isCorrect && <FaTimesCircle className="text-2xl sm:text-3xl flex-shrink-0 text-danger" />}
                 </button>
               );
             })}
