@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { tips } from '../data/gameData';
 import { EmailForm } from './EmailForm';
-import { FaPartyHorn, FaLightbulb, FaClipboardList, FaTrophy, FaCheckCircle, FaGraduationCap, FaBook, FaUsers } from 'react-icons/fa';
+import { FaLightbulb, FaClipboardList, FaTrophy, FaCheckCircle, FaGraduationCap, FaBook, FaUsers } from 'react-icons/fa';
 import { GiPartyPopper } from 'react-icons/gi';
 
 export function EndingScreen() {
