@@ -52,7 +52,7 @@ export function PressureTimer({
   
   const getColor = () => {
     if (seconds <= 30) return 'text-danger';
-    if (seconds <= 60) return 'text-yellow-400';
+    if (seconds <= 60) return 'text-yellow-300';
     return 'text-white';
   };
   

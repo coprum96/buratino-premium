@@ -98,9 +98,9 @@ export function LieDetector({ character, lies, onComplete }: LieDetectorProps) {
         {revealed && (
           <div className="flex justify-center gap-4">
             <div className={`px-4 py-2 rounded-lg border-2 ${
-              score >= 80 ? 'bg-success/20 border-success' : 
-              score >= 50 ? 'bg-yellow-500/20 border-yellow-500' : 
-              'bg-danger/20 border-danger'
+              score >= 80 ? 'bg-success/20 border-success text-white' : 
+              score >= 50 ? 'bg-yellow-500/30 border-yellow-500 text-gray-900 font-semibold' : 
+              'bg-danger/20 border-danger text-white'
             }`}>
               Точность: <span className="font-bold">{score}%</span>
             </div>
