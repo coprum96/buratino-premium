@@ -21,9 +21,35 @@ export interface Dialogue {
   emotion?: string;
   text: string;
   redFlags?: string[];
+  redFlagsData?: RedFlagDetail[];
   choices: Choice[];
   presentation?: PresentationSlide[];
   microscope?: MicroscopeData;
+  pressureTimer?: number; // секунды для таймера давления
+  calculator?: boolean; // показать калькулятор потерь
+  matchGame?: boolean; // показать игру сопоставления
+  lieDetector?: LieDetectorData;
+}
+
+export interface RedFlagDetail {
+  title: string;
+  description: string;
+  example?: string;
+  law?: string;
+  statistics?: string;
+  video?: string;
+  tips?: string[];
+}
+
+export interface LieDetectorData {
+  character: string;
+  segments: LieSegment[];
+}
+
+export interface LieSegment {
+  text: string;
+  isLie: boolean;
+  explanation?: string;
 }
 
 export interface PresentationSlide {

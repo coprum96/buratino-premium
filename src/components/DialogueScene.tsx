@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { levels, characters } from '../data/gameData';
+import { levels, characters, type RedFlagDetail } from '../data/gameData';
 import { createParticleBurst } from '../utils/particles';
 import { PresentationViewer } from './PresentationViewer';
 import { MicroscopeView } from './MicroscopeView';
+import { RedFlagModal } from './RedFlagModal';
+import { PressureTimer } from './PressureTimer';
+import { LossCalculator } from './LossCalculator';
+import { MatchGame } from './MatchGame';
+import { LieDetector } from './LieDetector';
 
 export function DialogueScene() {
   const { currentLevel, currentDialogue, addWisdom, addCoins, setCurrentDialogue, setPhase, completeLevel } = useGameStore();
@@ -12,6 +17,9 @@ export function DialogueScene() {
   const [showChoices, setShowChoices] = useState(false);
   const [showPresentation, setShowPresentation] = useState(false);
   const [showMicroscope, setShowMicroscope] = useState(false);
+  const [selectedRedFlag, setSelectedRedFlag] = useState<RedFlagDetail | null>(null);
+  const [showTimer, setShowTimer] = useState(true);
+  const [timerCompleted, setTimerCompleted] = useState(false);
   
   const level = levels[currentLevel];
   const dialogue = level?.dialogues[currentDialogue];
@@ -124,8 +132,34 @@ export function DialogueScene() {
             {isTyping && <span className="animate-pulse">▋</span>}
           </div>
           
-          {/* Red Flags */}
-          {dialogue.redFlags && !isTyping && (
+          {/* Red Flags - Кликабельные */}
+          {dialogue.redFlagsData && !isTyping && (
+            <div className="mt-4 sm:mt-6 p-4 sm:p-5 bg-danger/20 border-2 border-danger/40 rounded-xl">
+              <div className="text-lg sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-2 break-words">
+                🚩 Красные флажки:
+              </div>
+              <div className="space-y-2">
+                {dialogue.redFlagsData.map((flag, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedRedFlag(flag)}
+                    className="w-full p-3 bg-white/10 rounded-lg hover:bg-danger/30 hover:scale-102 transition-all cursor-pointer text-sm sm:text-base break-words word-wrap leading-relaxed text-left flex items-center gap-2"
+                    style={{ animationDelay: `${index * 200}ms` }}
+                  >
+                    <span className="text-2xl flex-shrink-0">🚩</span>
+                    <span className="flex-1">{flag.title}</span>
+                    <span className="text-xl flex-shrink-0 opacity-50">ℹ️</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs sm:text-sm mt-3 opacity-70 text-center">
+                Кликните на флажок, чтобы узнать подробности
+              </p>
+            </div>
+          )}
+          
+          {/* Старые красные флажки (обратная совместимость) */}
+          {dialogue.redFlags && !dialogue.redFlagsData && !isTyping && (
             <div className="mt-4 sm:mt-6 p-4 sm:p-5 bg-danger/20 border-2 border-danger/40 rounded-xl">
               <div className="text-lg sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-2 break-words">
                 🚩 Красные флажки:
@@ -134,7 +168,7 @@ export function DialogueScene() {
                 {dialogue.redFlags.map((flag, index) => (
                   <div 
                     key={index}
-                    className="p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-all cursor-pointer text-sm sm:text-base break-words word-wrap leading-relaxed"
+                    className="p-3 bg-white/10 rounded-lg text-sm sm:text-base break-words word-wrap leading-relaxed"
                     style={{ animationDelay: `${index * 200}ms` }}
                   >
                     🚩 {flag}
@@ -144,6 +178,59 @@ export function DialogueScene() {
             </div>
           )}
         </div>
+        
+        {/* Таймер давления */}
+        {dialogue.pressureTimer && showTimer && !timerCompleted && !isTyping && (
+          <div className="mb-6 sm:mb-8">
+            <PressureTimer
+              initialSeconds={dialogue.pressureTimer}
+              onSuccess={() => {
+                addWisdom(50);
+                setTimerCompleted(true);
+                setShowTimer(false);
+                createParticleBurst('🛡️', 8);
+              }}
+              onTimeout={() => {
+                addWisdom(-20);
+                setTimerCompleted(true);
+                createParticleBurst('💔', 5);
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Калькулятор потерь */}
+        {dialogue.calculator && !isTyping && (
+          <div className="mb-6 sm:mb-8">
+            <LossCalculator />
+          </div>
+        )}
+        
+        {/* Игра сопоставления */}
+        {dialogue.matchGame && !isTyping && (
+          <div className="mb-6 sm:mb-8">
+            <MatchGame onComplete={(score) => {
+              addWisdom(score * 2);
+              createParticleBurst('🎯', 10);
+            }} />
+          </div>
+        )}
+        
+        {/* Детектор лжи */}
+        {dialogue.lieDetector && !isTyping && (
+          <div className="mb-6 sm:mb-8">
+            <LieDetector
+              character={dialogue.lieDetector.character}
+              lies={dialogue.lieDetector.segments}
+              onComplete={(score) => {
+                addWisdom(score);
+                if (score >= 80) {
+                  createParticleBurst('🏆', 15);
+                }
+              }}
+            />
+          </div>
+        )}
         
         {/* Interactive Elements Buttons */}
         {!isTyping && (dialogue.presentation || dialogue.microscope) && (
@@ -202,6 +289,14 @@ export function DialogueScene() {
           smallPrintText={dialogue.microscope.smallPrintText}
           dangerousTerms={dialogue.microscope.dangerousTerms}
           onClose={() => setShowMicroscope(false)}
+        />
+      )}
+      
+      {/* Red Flag Modal */}
+      {selectedRedFlag && (
+        <RedFlagModal
+          flag={selectedRedFlag}
+          onClose={() => setSelectedRedFlag(null)}
         />
       )}
     </div>

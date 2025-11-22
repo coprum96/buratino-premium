@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { tips } from '../data/gameData';
+import { EmailForm } from './EmailForm';
 
 export function EndingScreen() {
   const { coins, wisdom, achievements, postTestScore, resetGame } = useGameStore();
+  const [showEmailForm, setShowEmailForm] = useState(true);
   
   return (
     <div className="min-h-screen pt-28 pb-10">
@@ -83,6 +86,13 @@ export function EndingScreen() {
               <li>✅ Делиться знаниями с друзьями</li>
             </ul>
           </div>
+          
+          {/* Email Form */}
+          {showEmailForm && (
+            <div className="mt-12">
+              <EmailForm onSubmit={() => setShowEmailForm(false)} />
+            </div>
+          )}
           
           {/* Buttons */}
           <div className="mt-8 flex gap-4 justify-center flex-wrap">

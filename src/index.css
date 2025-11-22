@@ -130,6 +130,21 @@
   }
 }
 
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Hide scrollbar but keep functionality */
 ::-webkit-scrollbar {
   width: 8px;
