@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { postTest } from '../data/gameData';
 
@@ -11,6 +11,11 @@ export function PostTest() {
   
   const question = postTest[currentQuestion];
   
+  // ПОЛНЫЙ СБРОС состояния при смене вопроса
+  useEffect(() => {
+    setSelectedAnswer(null);
+  }, [currentQuestion]);
+  
   const handleAnswer = (answerIndex: number) => {
     if (selectedAnswer !== null) return;
     
@@ -21,14 +26,14 @@ export function PostTest() {
       setScore(score + 1);
     }
     
+    // Увеличено время с 1500 до 4000ms (4 секунды)
     setTimeout(() => {
       if (currentQuestion < postTest.length - 1) {
         setCurrentQuestion(currentQuestion + 1);
-        setSelectedAnswer(null);
       } else {
         setShowResult(true);
       }
-    }, 1500);
+    }, 4000);
   };
   
   const handleComplete = () => {
@@ -69,19 +74,19 @@ export function PostTest() {
   }
   
   return (
-    <div className="min-h-screen pt-28 pb-10">
-      <div className="container max-w-3xl mx-auto px-5">
-        <div className="glass-card animate-scale-in">
-          <h2 className="text-3xl font-bold mb-5">Финальный тест</h2>
-          <p className="text-lg mb-6 opacity-80">
+    <div className="min-h-screen pt-24 pb-10 flex items-center justify-center">
+      <div className="container max-w-3xl mx-auto px-4 sm:px-5">
+        <div key={currentQuestion} className="glass-card animate-scale-in">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-5 break-words">Финальный тест</h2>
+          <p className="text-base sm:text-lg mb-4 sm:mb-6 opacity-80">
             Вопрос {currentQuestion + 1} из {postTest.length}
           </p>
           
-          <h3 className="text-2xl mb-8 leading-relaxed">
+          <h3 className="text-lg sm:text-2xl mb-6 sm:mb-8 leading-relaxed break-words word-wrap">
             {question.text}
           </h3>
           
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {question.options.map((option, index) => {
               const isSelected = selectedAnswer === index;
               const isCorrect = index === question.correct;
@@ -100,19 +105,19 @@ export function PostTest() {
               
               return (
                 <button
-                  key={index}
-                  className={`w-full p-5 text-lg text-left flex items-center gap-3 backdrop-blur-lg border-2 border-white/30 rounded-xl transition-all ${bgColor} ${
+                  key={`${currentQuestion}-${index}`}
+                  className={`w-full p-4 sm:p-5 text-base sm:text-lg text-left flex items-center gap-2 sm:gap-3 backdrop-blur-lg border-2 border-white/30 rounded-xl transition-all ${bgColor} ${
                     selectedAnswer === null ? 'hover:bg-white/25 hover:scale-105 cursor-pointer' : 'cursor-default'
-                  }`}
+                  } break-words word-wrap`}
                   onClick={() => handleAnswer(index)}
                   disabled={selectedAnswer !== null}
                 >
-                  <span className="text-2xl flex-shrink-0 w-10 h-10 flex items-center justify-center bg-white/20 rounded-lg">
+                  <span className="text-xl sm:text-2xl flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white/20 rounded-lg">
                     {String.fromCharCode(65 + index)}
                   </span>
-                  <span className="flex-1">{option}</span>
-                  {showStatus && isCorrect && <span className="text-3xl">✅</span>}
-                  {showStatus && isSelected && !isCorrect && <span className="text-3xl">❌</span>}
+                  <span className="flex-1 break-words word-wrap leading-relaxed">{option}</span>
+                  {showStatus && isCorrect && <span className="text-2xl sm:text-3xl flex-shrink-0">✅</span>}
+                  {showStatus && isSelected && !isCorrect && <span className="text-2xl sm:text-3xl flex-shrink-0">❌</span>}
                 </button>
               );
             })}
