@@ -5,7 +5,7 @@ import { createParticleBurst } from '../utils/particles';
 import { FaChartBar, FaTrophy, FaBullseye, FaBook, FaCheckCircle, FaTimesCircle, FaArrowRight } from 'react-icons/fa';
 
 export function QuizScreen() {
-  const { currentLevel, addWisdom, completeLevel } = useGameStore();
+  const { currentLevel, addWisdom, completeLevel, checkLevelAccess, setPendingLevel, setPhase } = useGameStore();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
@@ -55,6 +55,18 @@ export function QuizScreen() {
   
   function handleComplete() {
     completeLevel(currentLevel);
+    
+    // Проверка доступа к следующему уровню (монетизация)
+    const nextLevelId = currentLevel + 1;
+    
+    if (!checkLevelAccess(nextLevelId)) {
+      // Следующий уровень заблокирован - показываем paywall
+      setPendingLevel(nextLevelId);
+      setPhase('paywall');
+      return;
+    }
+    
+    // Доступ есть - переходим к следующему уровню
     useGameStore.getState().nextLevel();
   }
   

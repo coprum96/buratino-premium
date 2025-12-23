@@ -11,7 +11,7 @@ import { MatchGame } from './MatchGame';
 import { LieDetector } from './LieDetector';
 
 export function DialogueScene() {
-  const { currentLevel, currentDialogue, addWisdom, addCoins, setCurrentDialogue, setPhase, completeLevel } = useGameStore();
+  const { currentLevel, currentDialogue, addWisdom, addCoins, setCurrentDialogue, setPhase, completeLevel, checkLevelAccess, setPendingLevel } = useGameStore();
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [showChoices, setShowChoices] = useState(false);
@@ -90,7 +90,18 @@ export function DialogueScene() {
             setPhase('quiz');
           } else {
             completeLevel(currentLevel);
-            useGameStore.getState().nextLevel();
+            
+            // Проверка доступа к следующему уровню (монетизация)
+            const nextLevelId = currentLevel + 1;
+            
+            if (!checkLevelAccess(nextLevelId)) {
+              // Следующий уровень заблокирован - показываем paywall
+              setPendingLevel(nextLevelId);
+              setPhase('paywall');
+            } else {
+              // Доступ есть - переходим к следующему уровню
+              useGameStore.getState().nextLevel();
+            }
           }
         }
       }

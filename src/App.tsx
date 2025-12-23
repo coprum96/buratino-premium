@@ -9,9 +9,11 @@ import { PostTest } from './components/PostTest';
 import { EndingScreen } from './components/EndingScreen';
 import { StatsBar } from './components/StatsBar';
 import { MaterialsPanel } from './components/MaterialsPanel';
+import { Paywall } from './components/Paywall';
+import type { AccessStatus } from './utils/accessControl';
 
 function App() {
-  const { phase } = useGameStore();
+  const { phase, setAccessStatus, continueFromPaywall } = useGameStore();
   
   useEffect(() => {
     // Set initial gradient background
@@ -29,16 +31,26 @@ function App() {
     return () => clearInterval(timer);
   }, []);
   
+  const handleAccessGranted = (status: AccessStatus) => {
+    setAccessStatus(status);
+    continueFromPaywall();
+  };
+
+  const handlePaywallClose = () => {
+    // Вернуться к карте глав без продолжения игры
+    useGameStore.setState({ phase: 'chapterMap', pendingLevel: null });
+  };
+
   return (
     <>
       {/* Gradient Background */}
       <div className="gradient-bg" />
       
-      {/* Stats Bar - показываем везде кроме landing и ending */}
-      {phase !== 'landing' && phase !== 'ending' && <StatsBar />}
+      {/* Stats Bar - показываем везде кроме landing, ending и paywall */}
+      {phase !== 'landing' && phase !== 'ending' && phase !== 'paywall' && <StatsBar />}
       
-      {/* Materials Panel */}
-      <MaterialsPanel />
+      {/* Materials Panel - скрываем на paywall */}
+      {phase !== 'paywall' && <MaterialsPanel />}
       
       {/* Main Content */}
       <div className="relative z-10">
@@ -49,6 +61,12 @@ function App() {
         {phase === 'scenarioTest' && <ScenarioTest />}
         {phase === 'postTest' && <PostTest />}
         {phase === 'ending' && <EndingScreen />}
+        {phase === 'paywall' && (
+          <Paywall 
+            onAccessGranted={handleAccessGranted}
+            onClose={handlePaywallClose}
+          />
+        )}
       </div>
     </>
   );

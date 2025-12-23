@@ -1,8 +1,13 @@
 import { create } from 'zustand';
+import { AccessStatus, validatePromoCode } from '../utils/accessControl';
 
-export type GamePhase = 'landing' | 'chapterMap' | 'dialogue' | 'quiz' | 'scenarioTest' | 'complexTest' | 'postTest' | 'ending';
+export type GamePhase = 'landing' | 'chapterMap' | 'dialogue' | 'quiz' | 'scenarioTest' | 'complexTest' | 'postTest' | 'ending' | 'paywall';
 
 interface GameState {
+  // Access Control (Monetization)
+  accessStatus: AccessStatus;
+  pendingLevel: number | null; // Уровень, куда игрок пытался попасть до paywall
+  
   // Game Stats
   coins: number;
   wisdom: number;
@@ -37,9 +42,16 @@ interface GameState {
   setPostTestScore: (score: number) => void;
   resetGame: () => void;
   incrementCitizensCount: () => void;
+  
+  // Access Control Actions
+  setAccessStatus: (status: AccessStatus) => void;
+  setPendingLevel: (level: number | null) => void;
+  activatePromoCode: (code: string) => { success: boolean; error?: string };
+  checkLevelAccess: (levelId: number) => boolean;
+  continueFromPaywall: () => void;
 }
 
-export const useGameStore = create<GameState>((set) => ({
+export const useGameStore = create<GameState>((set, get) => ({
   // Initial State
   coins: 5,
   wisdom: 0,
@@ -53,6 +65,10 @@ export const useGameStore = create<GameState>((set) => ({
   showMaterialsPanel: false,
   globalCitizensCount: 0,
   victimCount: 13495302,
+  
+  // Access Control State
+  accessStatus: 'free',
+  pendingLevel: null,
   
   // Actions
   setPhase: (phase) => set({ phase }),
@@ -101,7 +117,68 @@ export const useGameStore = create<GameState>((set) => ({
     preTestScore: 0,
     postTestScore: 0,
     phase: 'landing',
-    showMaterialsPanel: false
-  })
+    showMaterialsPanel: false,
+    accessStatus: 'free',
+    pendingLevel: null
+  }),
+  
+  // Access Control Actions
+  setAccessStatus: (status) => set({ accessStatus: status }),
+  
+  setPendingLevel: (level) => set({ pendingLevel: level }),
+  
+  /**
+   * Активирует промокод
+   * @param code - введённый промокод
+   * @returns объект с результатом активации
+   */
+  activatePromoCode: (code) => {
+    const validatedStatus = validatePromoCode(code);
+    
+    if (validatedStatus) {
+      set({ accessStatus: validatedStatus });
+      return { success: true };
+    }
+    
+    return { 
+      success: false, 
+      error: 'Неверный промокод. Попробуйте ещё раз.' 
+    };
+  },
+  
+  /**
+   * Проверяет доступ к уровню
+   * @param levelId - ID уровня для проверки
+   * @returns true если доступ разрешён
+   */
+  checkLevelAccess: (levelId) => {
+    const state = get();
+    
+    // Главы 0, 1, 2 всегда доступны
+    if (levelId <= 2) return true;
+    
+    // Главы 3+ требуют promo или paid
+    return state.accessStatus === 'promo' || state.accessStatus === 'paid';
+  },
+  
+  /**
+   * Продолжает игру после успешной активации доступа
+   * Переходит к запомненному уровню
+   */
+  continueFromPaywall: () => {
+    const state = get();
+    
+    if (state.pendingLevel !== null) {
+      set({
+        currentLevel: state.pendingLevel,
+        currentDialogue: 0,
+        phase: 'chapterMap',
+        pendingLevel: null
+      });
+    } else {
+      // Fallback: просто вернуться к карте глав
+      set({ phase: 'chapterMap' });
+    }
+  }
 }));
 

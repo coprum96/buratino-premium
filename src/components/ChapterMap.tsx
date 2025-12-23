@@ -1,15 +1,27 @@
 import { useGameStore } from '../store/gameStore';
 import { levels } from '../data/gameData';
-import { FaBook, FaCheckCircle, FaStar, FaLock, FaCoins, FaTheaterMasks, FaCalculator, FaBoxes, FaChartLine, FaBullseye, FaFileAlt, FaTrophy } from 'react-icons/fa';
+import { FaBook, FaCheckCircle, FaStar, FaLock, FaCoins, FaTheaterMasks, FaCalculator, FaBoxes, FaChartLine, FaBullseye, FaFileAlt, FaTrophy, FaCrown } from 'react-icons/fa';
 
 export function ChapterMap() {
-  const { currentLevel, setPhase, completedLevels } = useGameStore();
+  const { currentLevel, setPhase, completedLevels, checkLevelAccess, setPendingLevel } = useGameStore();
   
   const handleChapterClick = (levelIndex: number) => {
-    if (levelIndex <= currentLevel) {
-      useGameStore.setState({ currentLevel: levelIndex, currentDialogue: 0 });
-      setPhase('dialogue');
+    // Проверка: доступен ли уровень по прогрессу
+    if (levelIndex > currentLevel) {
+      return; // Ещё не достигнут
     }
+    
+    // Проверка доступа (монетизация)
+    if (!checkLevelAccess(levelIndex)) {
+      // Уровень заблокирован - показываем paywall
+      setPendingLevel(levelIndex);
+      setPhase('paywall');
+      return;
+    }
+    
+    // Доступ есть - запускаем уровень
+    useGameStore.setState({ currentLevel: levelIndex, currentDialogue: 0 });
+    setPhase('dialogue');
   };
   
   return (
@@ -25,6 +37,8 @@ export function ChapterMap() {
             const isAvailable = index <= currentLevel;
             const isCompleted = completedLevels.includes(level.id);
             const isCurrent = index === currentLevel;
+            const isPremium = index > 2; // Главы 3+ - платные
+            const hasAccess = checkLevelAccess(index);
             
             return (
               <div
@@ -46,6 +60,14 @@ export function ChapterMap() {
                 {isCurrent && !isCompleted && (
                   <div className="absolute top-4 right-4 text-4xl animate-float text-yellow-400">
                     <FaStar />
+                  </div>
+                )}
+                
+                {/* Premium badge */}
+                {isPremium && !hasAccess && (
+                  <div className="absolute top-4 left-4 flex items-center gap-1 bg-secondary/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-bold">
+                    <FaCrown className="text-yellow-300" />
+                    <span>PRO</span>
                   </div>
                 )}
                 
@@ -82,7 +104,16 @@ export function ChapterMap() {
                     </div>
                   )}
                   
-                  {isCurrent && (
+                  {isAvailable && isPremium && !hasAccess && (
+                    <div className="mt-4">
+                      <button className="btn btn-secondary text-sm flex items-center gap-2 mx-auto">
+                        <FaCrown className="text-yellow-300" />
+                        Открыть доступ
+                      </button>
+                    </div>
+                  )}
+                  
+                  {isCurrent && hasAccess && (
                     <div className="mt-4">
                       <button className="btn btn-primary text-sm">
                         Начать главу
