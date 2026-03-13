@@ -25,18 +25,18 @@ export function StartScreen() {
           </div>
         </div>
         
-        {/* Character Image - БОЛЬШОЙ! */}
-        <div className="mb-8 sm:mb-10 relative">
+        {/* Character Image - ОГРОМНЫЙ! 🔥 */}
+        <div className="mb-10 sm:mb-12 relative">
           {/* Свечение вокруг персонажа */}
-          <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-yellow-400/30 via-orange-400/30 to-purple-400/30 rounded-full animate-pulse"></div>
+          <div className="absolute inset-0 blur-[100px] bg-gradient-to-r from-yellow-400/40 via-orange-400/40 to-purple-400/40 rounded-full animate-pulse"></div>
           
           {/* Само изображение */}
           <img 
             src="/img/character_buratino_happy.png" 
             alt="Buratino" 
-            className="w-48 h-auto sm:w-56 md:w-64 lg:w-72 xl:w-80 mx-auto rounded-3xl shadow-2xl animate-float relative z-10 hover:scale-105 transition-transform duration-500"
+            className="w-64 h-auto sm:w-72 md:w-80 lg:w-96 xl:w-[28rem] 2xl:w-[32rem] mx-auto rounded-3xl shadow-2xl animate-float relative z-10 hover:scale-105 transition-transform duration-500"
             style={{
-              filter: 'drop-shadow(0 0 30px rgba(251, 191, 36, 0.5))',
+              filter: 'drop-shadow(0 0 40px rgba(251, 191, 36, 0.6))',
             }}
             onError={(e) => e.currentTarget.style.display = 'none'}
           />
