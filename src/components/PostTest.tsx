@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { postTest } from '../data/gameData';
 import { FaGraduationCap, FaTrophy, FaBullseye, FaBook, FaCheckCircle, FaTimesCircle, FaArrowRight } from 'react-icons/fa';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
 
 export function PostTest() {
   const { setPostTestScore, setPhase } = useGameStore();
@@ -9,6 +10,7 @@ export function PostTest() {
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [answers, setAnswers] = useState<Array<{questionIndex: number; selectedAnswer: number; correctAnswer: number; isCorrect: boolean}>>([]);
   
   const question = postTest[currentQuestion];
   
@@ -22,6 +24,14 @@ export function PostTest() {
     
     setSelectedAnswer(answerIndex);
     const isCorrect = answerIndex === question.correct;
+    
+    // Сохраняем ответ для последующей отправки в аналитику
+    setAnswers([...answers, {
+      questionIndex: currentQuestion,
+      selectedAnswer: answerIndex,
+      correctAnswer: question.correct,
+      isCorrect
+    }]);
     
     if (isCorrect) {
       setScore(score + 1);
@@ -44,6 +54,14 @@ export function PostTest() {
   
   if (showResult) {
     const percentage = Math.round((score / postTest.length) * 100);
+    
+    // Отправляем результаты теста в аналитику
+    sessionAnalytics.trackTestResult(
+      'post',
+      score,
+      postTest.length,
+      answers
+    );
     
     return (
       <div className="min-h-screen pt-28 pb-10 flex items-center justify-center">

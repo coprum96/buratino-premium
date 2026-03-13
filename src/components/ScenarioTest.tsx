@@ -2,17 +2,27 @@ import { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { scenarioTest } from '../data/gameData';
 import { createParticleBurst } from '../utils/particles';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
 
 export function ScenarioTest() {
   const { addWisdom } = useGameStore();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [answers, setAnswers] = useState<Array<{questionIndex: number; selectedAnswer: number; correctAnswer: number; isCorrect: boolean}>>([]);
   
   const scenario = scenarioTest[currentQuestion];
   
   const handleAnswer = (answerIndex: number) => {
     const isCorrect = answerIndex === scenario.correct;
+    
+    // Сохраняем ответ для последующей отправки в аналитику
+    setAnswers([...answers, {
+      questionIndex: currentQuestion,
+      selectedAnswer: answerIndex,
+      correctAnswer: scenario.correct,
+      isCorrect
+    }]);
     
     if (isCorrect) {
       setCorrectAnswers(correctAnswers + 1);
@@ -50,6 +60,14 @@ export function ScenarioTest() {
     }
     
     addWisdom(wisdom);
+    
+    // Отправляем результаты теста в аналитику
+    sessionAnalytics.trackTestResult(
+      'scenario',
+      correctAnswers,
+      scenarioTest.length,
+      answers
+    );
     
     return (
       <div className="min-h-screen pt-28 pb-10 flex items-center justify-center">

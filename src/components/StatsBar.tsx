@@ -15,7 +15,7 @@ export function StatsBar() {
     }
   }, [coins, prevCoins]);
   
-  const totalLevels = 13; // Общее количество уровней в игре
+  const totalLevels = 14; // Общее количество уровней в игре (0-13)
   const progressPercent = Math.round((completedLevels.length / totalLevels) * 100);
   
   return (

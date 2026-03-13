@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore';
 import { levels } from '../data/gameData';
 import { createParticleBurst } from '../utils/particles';
 import { FaChartBar, FaTrophy, FaBullseye, FaBook, FaCheckCircle, FaTimesCircle, FaArrowRight } from 'react-icons/fa';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
 
 export function QuizScreen() {
   const { currentLevel, addWisdom, completeLevel, checkLevelAccess, setPendingLevel, setPhase } = useGameStore();
@@ -32,6 +33,15 @@ export function QuizScreen() {
     
     setSelectedAnswer(answerIndex);
     const isCorrect = answerIndex === question.correct;
+    
+    // Отслеживаем ответ для исследования
+    sessionAnalytics.trackQuizAnswer(
+      currentLevel,
+      currentQuestion,
+      question.text,
+      question.options[answerIndex],
+      isCorrect
+    );
     
     if (isCorrect) {
       setScore(score + 1);

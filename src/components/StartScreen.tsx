@@ -1,10 +1,13 @@
 import { useGameStore } from '../store/gameStore';
-import { FaSearch, FaExclamationTriangle, FaPlay } from 'react-icons/fa';
+import { FaSearch, FaPlay, FaUniversity } from 'react-icons/fa';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
 
 export function StartScreen() {
-  const { setPhase, incrementCitizensCount, victimCount } = useGameStore();
+  const { setPhase, incrementCitizensCount } = useGameStore();
   
   const handleStart = () => {
+    // Начинаем новую сессию для исследования
+    sessionAnalytics.startSession();
     incrementCitizensCount();
     setPhase('chapterMap');
   };
@@ -12,6 +15,16 @@ export function StartScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8 sm:px-6">
       <div className="container max-w-5xl mx-auto text-center">
+        {/* SPbGU Support Badge */}
+        <div className="mb-6 sm:mb-8 p-3 sm:p-4 bg-blue-500/20 backdrop-blur-lg rounded-2xl border-2 border-blue-400/50 max-w-2xl mx-auto">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base md:text-lg">
+            <FaUniversity className="text-blue-300 text-xl sm:text-2xl" />
+            <span className="font-semibold text-blue-100">
+              Игра подготовлена при поддержке СПбГУ
+            </span>
+          </div>
+        </div>
+        
         {/* Character Image */}
         <div className="mb-6 sm:mb-8">
           <img 
@@ -33,32 +46,18 @@ export function StartScreen() {
           Защита от финансового мошенничества
         </p>
         
-        {/* Victim Counter */}
-        <div className="mb-6 sm:mb-8 p-4 sm:p-5 md:p-6 bg-danger/20 backdrop-blur-lg rounded-2xl border-2 border-danger/50 animate-pulse max-w-3xl mx-auto">
-          <div className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-2 sm:mb-3 px-2 flex items-center justify-center gap-2">
-            <FaExclamationTriangle className="text-danger animate-pulse" />
-            ЖЕРТВ ФИНАНСОВОГО МОШЕННИЧЕСТВА В РФ:
-          </div>
-          <div 
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-danger" 
-            style={{ textShadow: '0 0 20px rgba(220, 38, 38, 0.8)' }}
-          >
-            {victimCount.toLocaleString('ru-RU')}
-          </div>
-        </div>
-        
         {/* Description */}
-        <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 opacity-90 max-w-2xl mx-auto px-4 leading-relaxed">
+        <p className="text-sm sm:text-base md:text-lg mb-8 sm:mb-10 opacity-90 max-w-2xl mx-auto px-4 leading-relaxed">
           Присоединяйся к приключению Буратино! Научись распознавать финансовое мошенничество 
           и защищать свои деньги от хитрых мошенников.
         </p>
         
-        {/* Start Button */}
+        {/* Start Button - Bigger size */}
         <button 
-          className="btn btn-primary text-base sm:text-lg md:text-xl px-6 sm:px-8 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 mx-auto"
+          className="btn btn-primary text-xl sm:text-2xl md:text-3xl px-10 sm:px-12 md:px-16 py-4 sm:py-5 md:py-6 flex items-center gap-3 sm:gap-4 mx-auto shadow-2xl hover:scale-110 transition-all duration-300"
           onClick={handleStart}
         >
-          <FaPlay />
+          <FaPlay className="text-2xl sm:text-3xl" />
           Начать приключение
         </button>
       </div>

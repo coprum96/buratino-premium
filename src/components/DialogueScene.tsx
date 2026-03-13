@@ -9,6 +9,7 @@ import { PressureTimer } from './PressureTimer';
 import { LossCalculator } from './LossCalculator';
 import { MatchGame } from './MatchGame';
 import { LieDetector } from './LieDetector';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
 
 export function DialogueScene() {
   const { currentLevel, currentDialogue, addWisdom, addCoins, setCurrentDialogue, setPhase, completeLevel, checkLevelAccess, setPendingLevel } = useGameStore();
@@ -23,6 +24,13 @@ export function DialogueScene() {
   
   const level = levels[currentLevel];
   const dialogue = level?.dialogues[currentDialogue];
+  
+  // Отслеживаем начало уровня
+  useEffect(() => {
+    if (currentDialogue === 0 && level) {
+      sessionAnalytics.startLevel(currentLevel);
+    }
+  }, [currentLevel, currentDialogue, level]);
   
   useEffect(() => {
     if (!dialogue) return;
@@ -59,6 +67,16 @@ export function DialogueScene() {
   const character = characters[dialogue.character];
   
   const handleChoice = (choice: any) => {
+    // Отслеживаем выбор в диалоге для исследования
+    sessionAnalytics.trackDialogueChoice(
+      currentLevel,
+      currentDialogue,
+      dialogue.character,
+      choice.text,
+      choice.wisdom || 0,
+      choice.coins || 0
+    );
+    
     if (choice.wisdom) {
       addWisdom(choice.wisdom);
       if (choice.wisdom > 0) {

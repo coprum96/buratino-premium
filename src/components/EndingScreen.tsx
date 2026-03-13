@@ -1,13 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { tips } from '../data/gameData';
 import { EmailForm } from './EmailForm';
 import { FaLightbulb, FaClipboardList, FaTrophy, FaCheckCircle, FaGraduationCap, FaBook, FaUsers } from 'react-icons/fa';
 import { GiPartyPopper } from 'react-icons/gi';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
 
 export function EndingScreen() {
   const { coins, wisdom, achievements, postTestScore, resetGame } = useGameStore();
   const [showEmailForm, setShowEmailForm] = useState(true);
+  
+  // Завершаем сессию при достижении финального экрана
+  useEffect(() => {
+    sessionAnalytics.updateFinalStats(coins, wisdom, achievements);
+    sessionAnalytics.endSession();
+  }, [coins, wisdom, achievements]);
   
   return (
     <div className="min-h-screen pt-28 pb-10">

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { AccessStatus, validatePromoCode } from '../utils/accessControl';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
 
 export type GamePhase = 'landing' | 'chapterMap' | 'dialogue' | 'quiz' | 'scenarioTest' | 'complexTest' | 'postTest' | 'ending' | 'paywall';
 
@@ -89,9 +90,14 @@ export const useGameStore = create<GameState>((set, get) => ({
   
   setCurrentDialogue: (index) => set({ currentDialogue: index }),
   
-  completeLevel: (levelId) => set((state) => ({
-    completedLevels: [...state.completedLevels, levelId]
-  })),
+  completeLevel: (levelId) => {
+    // Отслеживаем завершение уровня
+    sessionAnalytics.completeLevel(levelId);
+    
+    set((state) => ({
+      completedLevels: [...state.completedLevels, levelId]
+    }));
+  },
   
   addAchievement: (achievement) => set((state) => ({
     achievements: [...state.achievements, achievement]
@@ -101,26 +107,37 @@ export const useGameStore = create<GameState>((set, get) => ({
     showMaterialsPanel: !state.showMaterialsPanel
   })),
   
-  setPostTestScore: (score) => set({ postTestScore: score }),
+  setPostTestScore: (score) => {
+    set({ postTestScore: score });
+    
+    // Обновляем финальные статы в аналитике
+    const state = get();
+    sessionAnalytics.updateFinalStats(state.coins, state.wisdom, state.achievements);
+  },
   
   incrementCitizensCount: () => set((state) => ({
     globalCitizensCount: state.globalCitizensCount + 1
   })),
   
-  resetGame: () => set({
-    coins: 5,
-    wisdom: 0,
-    currentLevel: 0,
-    currentDialogue: 0,
-    completedLevels: [],
-    achievements: [],
-    preTestScore: 0,
-    postTestScore: 0,
-    phase: 'landing',
-    showMaterialsPanel: false,
-    accessStatus: 'free',
-    pendingLevel: null
-  }),
+  resetGame: () => {
+    // Завершаем текущую сессию перед сбросом
+    sessionAnalytics.endSession();
+    
+    set({
+      coins: 5,
+      wisdom: 0,
+      currentLevel: 0,
+      currentDialogue: 0,
+      completedLevels: [],
+      achievements: [],
+      preTestScore: 0,
+      postTestScore: 0,
+      phase: 'landing',
+      showMaterialsPanel: false,
+      accessStatus: 'free',
+      pendingLevel: null
+    });
+  },
   
   // Access Control Actions
   setAccessStatus: (status) => set({ accessStatus: status }),
