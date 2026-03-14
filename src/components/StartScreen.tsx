@@ -20,7 +20,7 @@ export function StartScreen() {
           <div className="flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base md:text-lg">
             <FaUniversity className="text-blue-300 text-xl sm:text-2xl" />
             <span className="font-semibold text-blue-100">
-              Игра подготовлена при поддержке СПбГУ
+              BehaviourTech разработан при поддержке СПбГУ
             </span>
           </div>
         </div>
