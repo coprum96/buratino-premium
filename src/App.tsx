@@ -16,6 +16,9 @@ import type { AccessStatus } from './utils/accessControl';
 function App() {
   const { phase, setAccessStatus, continueFromPaywall } = useGameStore();
   const [showDataPanel, setShowDataPanel] = useState(false);
+  const isDev = import.meta.env.DEV;
+  const showDevPanel = import.meta.env.VITE_SHOW_DEV_PANEL === 'true';
+  const canShowDataPanel = isDev || showDevPanel;
   
   useEffect(() => {
     // Set initial gradient background
@@ -25,16 +28,12 @@ function App() {
   // Keyboard shortcut for data export panel (Ctrl+Shift+D or Cmd+Shift+D)
   // Доступна только в development режиме
   useEffect(() => {
-    // Показываем панель только в DEV режиме или если явно указано в .env
-    const isDev = import.meta.env.DEV;
-    const showDevPanel = import.meta.env.VITE_SHOW_DEV_PANEL === 'true';
-    
-    if (!isDev && !showDevPanel) {
+    if (!canShowDataPanel) {
       return; // В продакшене панель недоступна
     }
     
     const handleKeyPress = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         setShowDataPanel(prev => !prev);
       }
@@ -42,7 +41,7 @@ function App() {
     
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, [canShowDataPanel]);
   
   // Global victim counter - always running
   useEffect(() => {
@@ -77,7 +76,7 @@ function App() {
       {phase !== 'paywall' && <MaterialsPanel />}
       
       {/* Data Export Panel (только в DEV режиме) */}
-      {showDataPanel && import.meta.env.DEV && (
+      {showDataPanel && canShowDataPanel && (
         <DataExportPanel onClose={() => setShowDataPanel(false)} />
       )}
       

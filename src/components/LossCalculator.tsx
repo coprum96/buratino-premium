@@ -17,7 +17,7 @@ const scenarios: CalculatorScenario[] = [
     yearlyInterest: 300,
     withdrawalFeePercent: 0,
     lockPeriodMonths: 0,
-    description: 'Займ с огромными процентами'
+    description: 'Риск долговой спирали: высокая ставка резко увеличивает итоговый долг'
   },
   {
     name: 'Инвестиции с комиссиями',
@@ -33,7 +33,7 @@ const scenarios: CalculatorScenario[] = [
     monthlyFeePercent: 10,
     yearlyInterest: -50,
     lockPeriodMonths: 12,
-    description: 'Сетевой маркетинг с гарантированными потерями'
+    description: 'Доход зависит от притока новых участников и часто не имеет устойчивой экономики'
   }
 ];
 
@@ -110,6 +110,9 @@ export function LossCalculator({ scenario }: LossCalculatorProps) {
         </h3>
         <p className="text-sm sm:text-base opacity-90 break-words word-wrap">
           Посчитайте, сколько денег вы реально потеряете
+        </p>
+        <p className="text-xs sm:text-sm opacity-75 break-words word-wrap mt-2">
+          Если обещают рост вроде "10 000 ₽ → 40 000 ₽" без понятного источника дохода, это серьёзный красный флаг.
         </p>
       </div>
       

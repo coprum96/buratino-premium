@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { authenticateApiKey } from '../middleware/auth';
-import { createSession } from '../controllers/sessionController';
+import { createSession, getSessionById } from '../controllers/sessionController';
 
 export const sessionRouter = Router();
 
@@ -25,6 +25,13 @@ sessionRouter.post(
   authenticateApiKey,
   sessionValidation,
   createSession
+);
+
+// GET /api/sessions/:sessionId - Получить сохраненную сессию
+sessionRouter.get(
+  '/:sessionId',
+  authenticateApiKey,
+  getSessionById
 );
 
 

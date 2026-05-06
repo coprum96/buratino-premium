@@ -31,25 +31,24 @@ export async function createSession(
 
     console.log(`📊 Получена сессия: ${sessionData.sessionId}`);
 
-    // Проверка дубликата
-    const existing = await prisma.session.findUnique({
-      where: { sessionId: sessionData.sessionId }
-    });
-
-    if (existing) {
-      console.log(`⚠️  Сессия ${sessionData.sessionId} уже существует, пропускаем`);
-      return res.status(200).json({ 
-        status: 'ok',
-        message: 'Session already exists',
-        sessionId: sessionData.sessionId
-      });
-    }
-
-    // Создаём сессию и все связанные записи в транзакции
+    // Создаём/обновляем сессию и все связанные записи в транзакции
     const session = await prisma.$transaction(async (tx) => {
-      // 1. Создаём основную запись сессии
-      const newSession = await tx.session.create({
-        data: {
+      // 1. Upsert основной записи сессии
+      const upsertedSession = await tx.session.upsert({
+        where: { sessionId: sessionData.sessionId },
+        update: {
+          userId: sessionData.userId || null,
+          startTime: new Date(sessionData.startTime),
+          endTime: sessionData.endTime ? new Date(sessionData.endTime) : null,
+          totalPlayTime: sessionData.totalPlayTime || 0,
+          finalCoins: sessionData.finalCoins,
+          finalWisdom: sessionData.finalWisdom,
+          completedLevels: sessionData.completedLevels,
+          achievements: sessionData.achievements,
+          timePerLevel: sessionData.timePerLevel || {},
+          rawJson: sessionData as any,
+        },
+        create: {
           sessionId: sessionData.sessionId,
           userId: sessionData.userId || null,
           startTime: new Date(sessionData.startTime),
@@ -60,11 +59,17 @@ export async function createSession(
           completedLevels: sessionData.completedLevels,
           achievements: sessionData.achievements,
           timePerLevel: sessionData.timePerLevel || {},
-          rawJson: sessionData as any, // Полный dump
-        }
+          rawJson: sessionData as any,
+        },
       });
 
-      // 2. Создаём записи ответов на викторины
+      // 2. Удаляем старые дочерние записи, чтобы при промежуточном sync не было дублей
+      await tx.quizAnswer.deleteMany({ where: { sessionId: sessionData.sessionId } });
+      await tx.dialogueChoice.deleteMany({ where: { sessionId: sessionData.sessionId } });
+      await tx.testResult.deleteMany({ where: { sessionId: sessionData.sessionId } });
+      await tx.materialView.deleteMany({ where: { sessionId: sessionData.sessionId } });
+
+      // 3. Создаём записи ответов на викторины
       if (sessionData.quizAnswers && sessionData.quizAnswers.length > 0) {
         await tx.quizAnswer.createMany({
           data: sessionData.quizAnswers.map(answer => ({
@@ -80,7 +85,7 @@ export async function createSession(
         console.log(`  ✓ Сохранено ${sessionData.quizAnswers.length} ответов на викторины`);
       }
 
-      // 3. Создаём записи выборов в диалогах
+      // 4. Создаём записи выборов в диалогах
       if (sessionData.dialogueChoices && sessionData.dialogueChoices.length > 0) {
         await tx.dialogueChoice.createMany({
           data: sessionData.dialogueChoices.map(choice => ({
@@ -97,7 +102,7 @@ export async function createSession(
         console.log(`  ✓ Сохранено ${sessionData.dialogueChoices.length} выборов в диалогах`);
       }
 
-      // 4. Создаём записи результатов тестов
+      // 5. Создаём записи результатов тестов
       if (sessionData.testResults && sessionData.testResults.length > 0) {
         await tx.testResult.createMany({
           data: sessionData.testResults.map(result => ({
@@ -112,7 +117,7 @@ export async function createSession(
         console.log(`  ✓ Сохранено ${sessionData.testResults.length} результатов тестов`);
       }
 
-      // 5. Создаём записи просмотров материалов
+      // 6. Создаём записи просмотров материалов
       if (sessionData.materialViews && sessionData.materialViews.length > 0) {
         await tx.materialView.createMany({
           data: sessionData.materialViews.map(view => ({
@@ -126,20 +131,77 @@ export async function createSession(
         console.log(`  ✓ Сохранено ${sessionData.materialViews.length} просмотров материалов`);
       }
 
-      return newSession;
+      return upsertedSession;
     });
 
-    console.log(`✅ Сессия ${sessionData.sessionId} успешно сохранена`);
+    console.log(`✅ Сессия ${sessionData.sessionId} успешно синхронизирована`);
 
     res.status(201).json({
       status: 'ok',
-      message: 'Session saved successfully',
+      message: 'Session synchronized successfully',
       sessionId: session.sessionId,
       id: session.id
     });
 
   } catch (error) {
     console.error('❌ Ошибка сохранения сессии:', error);
+    next(error);
+  }
+}
+
+/**
+ * GET /api/sessions/:sessionId
+ * Возвращает последнюю синхронизированную версию сессии
+ */
+export async function getSessionById(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'sessionId parameter is required'
+      });
+    }
+
+    const session = await prisma.session.findUnique({
+      where: { sessionId },
+      include: {
+        quizAnswers: true,
+        dialogueChoices: true,
+        testResults: true,
+        materialViews: true,
+      },
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: `Session ${sessionId} not found`,
+      });
+    }
+
+    return res.status(200).json({
+      status: 'ok',
+      sessionId: session.sessionId,
+      updatedAt: session.updatedAt,
+      finalCoins: session.finalCoins,
+      finalWisdom: session.finalWisdom,
+      completedLevels: session.completedLevels,
+      counts: {
+        quizAnswers: session.quizAnswers.length,
+        dialogueChoices: session.dialogueChoices.length,
+        testResults: session.testResults.length,
+        materialViews: session.materialViews.length,
+      },
+      session,
+    });
+  } catch (error) {
+    console.error('❌ Ошибка получения сессии:', error);
     next(error);
   }
 }

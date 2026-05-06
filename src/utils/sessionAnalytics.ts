@@ -73,6 +73,10 @@ class SessionAnalytics {
   private currentSession: SessionData | null = null;
   private levelStartTimes: Record<number, number> = {};
   private materialStartTimes: Record<number, number> = {};
+  private syncTimer: ReturnType<typeof setTimeout> | null = null;
+  private isSyncInFlight = false;
+  private syncQueuedWhileSending = false;
+  private readonly SYNC_DEBOUNCE_MS = 1500;
   
   /**
    * Начинает новую сессию
@@ -95,6 +99,8 @@ class SessionAnalytics {
       totalPlayTime: 0,
       materialViews: []
     };
+
+    this.saveSession();
     
     return sessionId;
   }
@@ -258,7 +264,7 @@ class SessionAnalytics {
     this.archiveSession();
     
     // Отправляем данные на бэкенд
-    this.sendToServer(sessionToSend);
+    void this.sendToServer(sessionToSend);
   }
   
   /**
@@ -271,6 +277,59 @@ class SessionAnalytics {
       localStorage.setItem('currentSession', JSON.stringify(this.currentSession));
     } catch (error) {
       console.error('Ошибка сохранения сессии:', error);
+    }
+
+    this.scheduleServerSync();
+  }
+
+  /**
+   * Планирует промежуточную синхронизацию с сервером.
+   * Используем дебаунс, чтобы не отправлять запросы слишком часто.
+   */
+  private scheduleServerSync(force = false) {
+    if (!this.currentSession) return;
+
+    if (force) {
+      if (this.syncTimer) {
+        clearTimeout(this.syncTimer);
+        this.syncTimer = null;
+      }
+      void this.flushServerSync();
+      return;
+    }
+
+    if (this.syncTimer) {
+      clearTimeout(this.syncTimer);
+    }
+
+    this.syncTimer = setTimeout(() => {
+      this.syncTimer = null;
+      void this.flushServerSync();
+    }, this.SYNC_DEBOUNCE_MS);
+  }
+
+  /**
+   * Отправляет снимок текущей сессии на сервер.
+   */
+  private async flushServerSync() {
+    if (!this.currentSession) return;
+
+    if (this.isSyncInFlight) {
+      this.syncQueuedWhileSending = true;
+      return;
+    }
+
+    this.isSyncInFlight = true;
+    const snapshot: SessionData = JSON.parse(JSON.stringify(this.currentSession));
+
+    try {
+      await this.sendToServer(snapshot);
+    } finally {
+      this.isSyncInFlight = false;
+      if (this.syncQueuedWhileSending) {
+        this.syncQueuedWhileSending = false;
+        this.scheduleServerSync(true);
+      }
     }
   }
   
