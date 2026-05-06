@@ -31,108 +31,100 @@ export async function createSession(
 
     console.log(`📊 Получена сессия: ${sessionData.sessionId}`);
 
-    // Создаём/обновляем сессию и все связанные записи в транзакции
-    const session = await prisma.$transaction(async (tx) => {
-      // 1. Upsert основной записи сессии
-      const upsertedSession = await tx.session.upsert({
-        where: { sessionId: sessionData.sessionId },
-        update: {
-          userId: sessionData.userId || null,
-          startTime: new Date(sessionData.startTime),
-          endTime: sessionData.endTime ? new Date(sessionData.endTime) : null,
-          totalPlayTime: sessionData.totalPlayTime || 0,
-          finalCoins: sessionData.finalCoins,
-          finalWisdom: sessionData.finalWisdom,
-          completedLevels: sessionData.completedLevels,
-          achievements: sessionData.achievements,
-          timePerLevel: sessionData.timePerLevel || {},
-          rawJson: sessionData as any,
-        },
-        create: {
-          sessionId: sessionData.sessionId,
-          userId: sessionData.userId || null,
-          startTime: new Date(sessionData.startTime),
-          endTime: sessionData.endTime ? new Date(sessionData.endTime) : null,
-          totalPlayTime: sessionData.totalPlayTime || 0,
-          finalCoins: sessionData.finalCoins,
-          finalWisdom: sessionData.finalWisdom,
-          completedLevels: sessionData.completedLevels,
-          achievements: sessionData.achievements,
-          timePerLevel: sessionData.timePerLevel || {},
-          rawJson: sessionData as any,
-        },
-      });
-
-      // 2. Удаляем старые дочерние записи, чтобы при промежуточном sync не было дублей
-      await tx.quizAnswer.deleteMany({ where: { sessionId: sessionData.sessionId } });
-      await tx.dialogueChoice.deleteMany({ where: { sessionId: sessionData.sessionId } });
-      await tx.testResult.deleteMany({ where: { sessionId: sessionData.sessionId } });
-      await tx.materialView.deleteMany({ where: { sessionId: sessionData.sessionId } });
-
-      // 3. Создаём записи ответов на викторины
-      if (sessionData.quizAnswers && sessionData.quizAnswers.length > 0) {
-        await tx.quizAnswer.createMany({
-          data: sessionData.quizAnswers.map(answer => ({
-            sessionId: sessionData.sessionId,
-            levelId: answer.levelId,
-            questionIndex: answer.questionIndex,
-            questionText: answer.questionText,
-            selectedAnswer: answer.selectedAnswer,
-            isCorrect: answer.isCorrect,
-            timestamp: new Date(answer.timestamp),
-          }))
-        });
-        console.log(`  ✓ Сохранено ${sessionData.quizAnswers.length} ответов на викторины`);
-      }
-
-      // 4. Создаём записи выборов в диалогах
-      if (sessionData.dialogueChoices && sessionData.dialogueChoices.length > 0) {
-        await tx.dialogueChoice.createMany({
-          data: sessionData.dialogueChoices.map(choice => ({
-            sessionId: sessionData.sessionId,
-            levelId: choice.levelId,
-            dialogueIndex: choice.dialogueIndex,
-            characterName: choice.characterName,
-            choiceText: choice.choiceText,
-            wisdomChange: choice.wisdomChange,
-            coinChange: choice.coinChange,
-            timestamp: new Date(choice.timestamp),
-          }))
-        });
-        console.log(`  ✓ Сохранено ${sessionData.dialogueChoices.length} выборов в диалогах`);
-      }
-
-      // 5. Создаём записи результатов тестов
-      if (sessionData.testResults && sessionData.testResults.length > 0) {
-        await tx.testResult.createMany({
-          data: sessionData.testResults.map(result => ({
-            sessionId: sessionData.sessionId,
-            testType: result.testType,
-            score: result.score,
-            totalQuestions: result.totalQuestions,
-            rawAnswers: result.answers,
-            timestamp: new Date(result.timestamp),
-          }))
-        });
-        console.log(`  ✓ Сохранено ${sessionData.testResults.length} результатов тестов`);
-      }
-
-      // 6. Создаём записи просмотров материалов
-      if (sessionData.materialViews && sessionData.materialViews.length > 0) {
-        await tx.materialView.createMany({
-          data: sessionData.materialViews.map(view => ({
-            sessionId: sessionData.sessionId,
-            materialId: view.materialId,
-            materialTitle: view.materialTitle,
-            viewDuration: view.viewDuration,
-            timestamp: new Date(view.timestamp),
-          }))
-        });
-        console.log(`  ✓ Сохранено ${sessionData.materialViews.length} просмотров материалов`);
-      }
-
-      return upsertedSession;
+    // Важно: не используем interactive transaction с Supabase pooler,
+    // т.к. это часто приводит к P2028 (Unable to start a transaction in the given time).
+    const session = await prisma.session.upsert({
+      where: { sessionId: sessionData.sessionId },
+      update: {
+        userId: sessionData.userId || null,
+        startTime: new Date(sessionData.startTime),
+        endTime: sessionData.endTime ? new Date(sessionData.endTime) : null,
+        totalPlayTime: sessionData.totalPlayTime || 0,
+        finalCoins: sessionData.finalCoins,
+        finalWisdom: sessionData.finalWisdom,
+        completedLevels: sessionData.completedLevels,
+        achievements: sessionData.achievements,
+        timePerLevel: sessionData.timePerLevel || {},
+        rawJson: sessionData as any,
+      },
+      create: {
+        sessionId: sessionData.sessionId,
+        userId: sessionData.userId || null,
+        startTime: new Date(sessionData.startTime),
+        endTime: sessionData.endTime ? new Date(sessionData.endTime) : null,
+        totalPlayTime: sessionData.totalPlayTime || 0,
+        finalCoins: sessionData.finalCoins,
+        finalWisdom: sessionData.finalWisdom,
+        completedLevels: sessionData.completedLevels,
+        achievements: sessionData.achievements,
+        timePerLevel: sessionData.timePerLevel || {},
+        rawJson: sessionData as any,
+      },
     });
+
+    // Replace strategy для дочерних таблиц при промежуточных sync
+    await prisma.quizAnswer.deleteMany({ where: { sessionId: sessionData.sessionId } });
+    await prisma.dialogueChoice.deleteMany({ where: { sessionId: sessionData.sessionId } });
+    await prisma.testResult.deleteMany({ where: { sessionId: sessionData.sessionId } });
+    await prisma.materialView.deleteMany({ where: { sessionId: sessionData.sessionId } });
+
+    if (sessionData.quizAnswers && sessionData.quizAnswers.length > 0) {
+      await prisma.quizAnswer.createMany({
+        data: sessionData.quizAnswers.map(answer => ({
+          sessionId: sessionData.sessionId,
+          levelId: answer.levelId,
+          questionIndex: answer.questionIndex,
+          questionText: answer.questionText,
+          selectedAnswer: answer.selectedAnswer,
+          isCorrect: answer.isCorrect,
+          timestamp: new Date(answer.timestamp),
+        }))
+      });
+      console.log(`  ✓ Сохранено ${sessionData.quizAnswers.length} ответов на викторины`);
+    }
+
+    if (sessionData.dialogueChoices && sessionData.dialogueChoices.length > 0) {
+      await prisma.dialogueChoice.createMany({
+        data: sessionData.dialogueChoices.map(choice => ({
+          sessionId: sessionData.sessionId,
+          levelId: choice.levelId,
+          dialogueIndex: choice.dialogueIndex,
+          characterName: choice.characterName,
+          choiceText: choice.choiceText,
+          wisdomChange: choice.wisdomChange,
+          coinChange: choice.coinChange,
+          timestamp: new Date(choice.timestamp),
+        }))
+      });
+      console.log(`  ✓ Сохранено ${sessionData.dialogueChoices.length} выборов в диалогах`);
+    }
+
+    if (sessionData.testResults && sessionData.testResults.length > 0) {
+      await prisma.testResult.createMany({
+        data: sessionData.testResults.map(result => ({
+          sessionId: sessionData.sessionId,
+          testType: result.testType,
+          score: result.score,
+          totalQuestions: result.totalQuestions,
+          rawAnswers: result.answers,
+          timestamp: new Date(result.timestamp),
+        }))
+      });
+      console.log(`  ✓ Сохранено ${sessionData.testResults.length} результатов тестов`);
+    }
+
+    if (sessionData.materialViews && sessionData.materialViews.length > 0) {
+      await prisma.materialView.createMany({
+        data: sessionData.materialViews.map(view => ({
+          sessionId: sessionData.sessionId,
+          materialId: view.materialId,
+          materialTitle: view.materialTitle,
+          viewDuration: view.viewDuration,
+          timestamp: new Date(view.timestamp),
+        }))
+      });
+      console.log(`  ✓ Сохранено ${sessionData.materialViews.length} просмотров материалов`);
+    }
 
     console.log(`✅ Сессия ${sessionData.sessionId} успешно синхронизирована`);
 
