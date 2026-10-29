@@ -1,18 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { CHAPTER_META } from '../data/learningStages';
+import { characters, levels, type Choice, type RedFlagDetail } from '../data/gameData';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
+import { describeScoreEvent } from '../lib/scoring';
 import { useGameStore } from '../store/gameStore';
-import { levels, characters, type RedFlagDetail } from '../data/gameData';
-import { createParticleBurst } from '../utils/particles';
-import { PresentationViewer } from './PresentationViewer';
-import { MicroscopeView } from './MicroscopeView';
-import { RedFlagModal } from './RedFlagModal';
-import { PressureTimer } from './PressureTimer';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
+import { LieDetector } from './LieDetector';
 import { LossCalculator } from './LossCalculator';
 import { MatchGame } from './MatchGame';
-import { LieDetector } from './LieDetector';
-import { sessionAnalytics } from '../utils/sessionAnalytics';
+import { MicroscopeView } from './MicroscopeView';
+import { PresentationViewer } from './PresentationViewer';
+import { PressureTimer } from './PressureTimer';
+import { RedFlagModal } from './RedFlagModal';
+import { LiveRegion } from './ui/LiveRegion';
 
 export function DialogueScene() {
-  const { currentLevel, currentDialogue, addWisdom, addCoins, setCurrentDialogue, setPhase, completeLevel, checkLevelAccess, setPendingLevel } = useGameStore();
+  const {
+    currentLevel,
+    currentDialogue,
+    addWisdom,
+    addCoins,
+    setCurrentDialogue,
+    setPhase,
+    completeStory,
+    checkLevelAccess,
+    setPendingLevel,
+    recordStoryChoice,
+    finaleDecision,
+    lastScoreEvent,
+    isReplayingChapter,
+  } = useGameStore();
+  const reducedMotion = usePrefersReducedMotion();
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [showChoices, setShowChoices] = useState(false);
@@ -21,53 +39,90 @@ export function DialogueScene() {
   const [selectedRedFlag, setSelectedRedFlag] = useState<RedFlagDetail | null>(null);
   const [showTimer, setShowTimer] = useState(true);
   const [timerCompleted, setTimerCompleted] = useState(false);
-  
+  const [pendingChoice, setPendingChoice] = useState<Choice | null>(null);
+
   const level = levels[currentLevel];
   const dialogue = level?.dialogues[currentDialogue];
-  
-  // Отслеживаем начало уровня
+  const character = dialogue ? characters[dialogue.character] : undefined;
+  const meta = CHAPTER_META[currentLevel];
+  const visibleText = useMemo(() => {
+    if (!dialogue) return '';
+    if (finaleDecision && dialogue.variants?.[finaleDecision]) {
+      return dialogue.variants[finaleDecision]!.text;
+    }
+    return dialogue.text;
+  }, [dialogue, finaleDecision]);
+
   useEffect(() => {
     if (currentDialogue === 0 && level) {
       sessionAnalytics.startLevel(currentLevel);
     }
   }, [currentLevel, currentDialogue, level]);
-  
+
   useEffect(() => {
     if (!dialogue) return;
-    
-    // Typewriter effect
+    setPendingChoice(null);
+    setShowTimer(true);
+    setTimerCompleted(false);
+    if (reducedMotion) {
+      setDisplayedText(visibleText);
+      setIsTyping(false);
+      setShowChoices(true);
+      return;
+    }
+
     setIsTyping(true);
     setShowChoices(false);
     setDisplayedText('');
-    
     let currentIndex = 0;
-    const text = dialogue.text;
-    const speed = 30;
-    
-    const timer = setInterval(() => {
-      if (currentIndex < text.length) {
-        setDisplayedText(text.slice(0, currentIndex + 1));
-        currentIndex++;
-      } else {
+    const timer = window.setInterval(() => {
+      currentIndex += 1;
+      setDisplayedText(visibleText.slice(0, currentIndex));
+      if (currentIndex >= visibleText.length) {
         setIsTyping(false);
         setShowChoices(true);
-        clearInterval(timer);
+        window.clearInterval(timer);
       }
-    }, speed);
-    
-    return () => clearInterval(timer);
-  }, [dialogue]);
-  
-  if (!level || !dialogue) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <p className="text-2xl">Загрузка...</p>
-    </div>;
+    }, 16);
+    return () => window.clearInterval(timer);
+  }, [dialogue, visibleText, reducedMotion]);
+
+  if (!level || !dialogue || !character) {
+    return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
   }
-  
-  const character = characters[dialogue.character];
-  
-  const handleChoice = (choice: any) => {
-    // Отслеживаем выбор в диалоге для исследования
+
+  const goNext = (choice: Choice) => {
+    if (choice.nextLevel) {
+      completeStory(currentLevel);
+      setPhase('quiz');
+    } else if (choice.nextPhase === 'posttest') {
+      completeStory(currentLevel);
+      setPhase('postTest');
+    } else if (choice.next !== undefined) {
+      setCurrentDialogue(choice.next);
+    } else {
+      const nextDialogueIndex = currentDialogue + 1;
+      if (nextDialogueIndex < level.dialogues.length) {
+        setCurrentDialogue(nextDialogueIndex);
+      } else if (level.quiz.length > 0) {
+        completeStory(currentLevel);
+        setPhase('quiz');
+      } else {
+        completeStory(currentLevel);
+        const nextLevelId = currentLevel + 1;
+        if (!checkLevelAccess(nextLevelId)) {
+          setPendingLevel(nextLevelId);
+          setPhase('paywall');
+        } else {
+          useGameStore.getState().completeChapter(currentLevel);
+          useGameStore.getState().nextLevel();
+        }
+      }
+    }
+  };
+
+  const handleChoice = (choice: Choice) => {
+    if (pendingChoice) return;
     sessionAnalytics.trackDialogueChoice(
       currentLevel,
       currentDialogue,
@@ -76,242 +131,165 @@ export function DialogueScene() {
       choice.wisdom || 0,
       choice.coins || 0
     );
-    
-    if (choice.wisdom) {
-      addWisdom(choice.wisdom);
-      if (choice.wisdom > 0) {
-        createParticleBurst('✨', 5);
-      }
-    }
-    
-    if (choice.coins) {
-      addCoins(choice.coins);
-      if (choice.coins < 0) {
-        createParticleBurst('💔', 5);
-      }
-    }
-    
-    setTimeout(() => {
-      if (choice.nextLevel) {
-        completeLevel(currentLevel);
-        setPhase('quiz');
-      } else if (choice.nextPhase === 'posttest') {
-        setPhase('postTest');
-      } else if (choice.next !== undefined) {
-        setCurrentDialogue(choice.next);
-      } else {
-        const nextDialogueIndex = currentDialogue + 1;
-        if (nextDialogueIndex < level.dialogues.length) {
-          setCurrentDialogue(nextDialogueIndex);
-        } else {
-          if (level.quiz.length > 0) {
-            setPhase('quiz');
-          } else {
-            completeLevel(currentLevel);
-            
-            // Проверка доступа к следующему уровню (монетизация)
-            const nextLevelId = currentLevel + 1;
-            
-            if (!checkLevelAccess(nextLevelId)) {
-              // Следующий уровень заблокирован - показываем paywall
-              setPendingLevel(nextLevelId);
-              setPhase('paywall');
-            } else {
-              // Доступ есть - переходим к следующему уровню
-              useGameStore.getState().nextLevel();
-            }
-          }
-        }
-      }
-    }, 500);
+    recordStoryChoice({
+      chapterId: currentLevel,
+      dialogueIndex: currentDialogue,
+      choiceId: choice.id || choice.text,
+      choiceText: choice.text,
+      consequence: choice.consequence,
+      wisdomChange: choice.wisdom || 0,
+      coinChange: choice.coins || 0,
+    });
+    if (choice.wisdom) addWisdom(choice.wisdom, choice.feedback || choice.text);
+    if (choice.coins) addCoins(choice.coins, choice.feedback || choice.text);
+    setPendingChoice(choice);
   };
-  
+
   return (
-    <div className="min-h-screen pt-24 pb-10">
-      <div className="container max-w-4xl mx-auto px-4 sm:px-5">
-        {/* Character Display */}
-        <div className="text-center mb-4 sm:mb-6 animate-slide-in-top">
+    <main className="min-h-screen pt-24 pb-10">
+      <div className="container max-w-3xl mx-auto px-4 motion-scene">
+        <div className="flex justify-between items-center mb-4 gap-3">
+          <button type="button" className="btn" onClick={() => setPhase('chapterMap')}>
+            На карту
+          </button>
+          {isReplayingChapter && <p className="text-sm text-white/70">Повтор: баллы не начисляются снова</p>}
+        </div>
+
+        {currentDialogue === 0 && meta && (
+          <section className="surface-card mb-5">
+            <p className="text-sm uppercase tracking-wide text-white/70">Глава {currentLevel + 1}</p>
+            <h1 className="text-2xl font-bold mb-2">{meta.title}</h1>
+            <p className="mb-1"><strong>Цель:</strong> {meta.goal}</p>
+            <p className="text-white/80">Около {meta.durationMin} минут</p>
+          </section>
+        )}
+
+        <div className="text-center mb-5">
           {character.image ? (
-            <img 
+            <img
               src={`/img/${character.image}`}
-              alt={character.name}
-              className="w-full max-w-[200px] sm:max-w-xs mx-auto rounded-xl shadow-2xl mb-3 sm:mb-4"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const emoji = document.createElement('div');
-                emoji.textContent = character.emoji;
-                emoji.className = 'text-6xl sm:text-8xl animate-float';
-                e.currentTarget.parentElement?.insertBefore(emoji, e.currentTarget);
-              }}
+              alt=""
+              className="w-full max-w-[180px] mx-auto rounded-xl mb-3"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
           ) : (
-            <div className="text-6xl sm:text-8xl mb-3 sm:mb-4 animate-float filter drop-shadow-lg">
-              {character.emoji}
-            </div>
+            <div className="text-6xl mb-3" aria-hidden="true">{character.emoji}</div>
           )}
-          <div className="text-2xl sm:text-3xl font-bold text-shadow break-words px-2">
-            {character.name}
-          </div>
+          <h2 className="text-2xl font-bold">{character.name}</h2>
         </div>
-        
-        {/* Dialogue Box */}
-        <div className="glass-card mb-6 sm:mb-8 animate-slide-in-bottom">
-          <div className="text-base sm:text-xl leading-relaxed min-h-[80px] sm:min-h-[100px] whitespace-pre-line break-words word-wrap">
-            {displayedText}
-            {isTyping && <span className="animate-pulse">▋</span>}
-          </div>
-          
-          {/* Red Flags - Кликабельные */}
+
+        <section className="surface-card mb-5">
+          <p className="text-lg leading-relaxed whitespace-pre-line">{displayedText}{isTyping && '▋'}</p>
+          {isTyping && (
+            <button type="button" className="btn mt-4" onClick={() => {
+              setDisplayedText(visibleText);
+              setIsTyping(false);
+              setShowChoices(true);
+            }}>
+              Показать весь текст
+            </button>
+          )}
+
           {dialogue.redFlagsData && !isTyping && (
-            <div className="mt-4 sm:mt-6 p-4 sm:p-5 bg-danger/20 border-2 border-danger/40 rounded-xl">
-              <div className="text-lg sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-2 break-words">
-                🚩 Красные флажки:
-              </div>
-              <div className="space-y-2">
-                {dialogue.redFlagsData.map((flag, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedRedFlag(flag)}
-                    className="w-full p-3 bg-white/10 rounded-lg hover:bg-danger/30 hover:scale-102 transition-all cursor-pointer text-sm sm:text-base break-words word-wrap leading-relaxed text-left flex items-center gap-2"
-                    style={{ animationDelay: `${index * 200}ms` }}
-                  >
-                    <span className="text-2xl flex-shrink-0">🚩</span>
-                    <span className="flex-1">{flag.title}</span>
-                    <span className="text-xl flex-shrink-0 opacity-50">ℹ️</span>
-                  </button>
+            <div className="mt-5 p-4 bg-danger/15 border border-danger/40 rounded-xl motion-danger">
+              <h3 className="font-bold mb-3">На что обратить внимание</h3>
+              <ul className="space-y-2">
+                {dialogue.redFlagsData.map((flag) => (
+                  <li key={flag.title}>
+                    <button
+                      type="button"
+                      className="choice-card motion-choice"
+                      onClick={() => {
+                        useGameStore.getState().noteRedFlagOpen();
+                        setSelectedRedFlag(flag);
+                      }}
+                    >
+                      {flag.title}
+                    </button>
+                  </li>
                 ))}
-              </div>
-              <p className="text-xs sm:text-sm mt-3 opacity-70 text-center">
-                Кликните на флажок, чтобы узнать подробности
-              </p>
+              </ul>
             </div>
           )}
-          
-          {/* Старые красные флажки (обратная совместимость) */}
-          {dialogue.redFlags && !dialogue.redFlagsData && !isTyping && (
-            <div className="mt-4 sm:mt-6 p-4 sm:p-5 bg-danger/20 border-2 border-danger/40 rounded-xl">
-              <div className="text-lg sm:text-2xl font-bold mb-3 sm:mb-4 flex items-center gap-2 break-words">
-                🚩 Красные флажки:
-              </div>
-              <div className="space-y-2">
-                {dialogue.redFlags.map((flag, index) => (
-                  <div 
-                    key={index}
-                    className="p-3 bg-white/10 rounded-lg text-sm sm:text-base break-words word-wrap leading-relaxed"
-                    style={{ animationDelay: `${index * 200}ms` }}
-                  >
-                    🚩 {flag}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Таймер давления */}
+        </section>
+
         {dialogue.pressureTimer && showTimer && !timerCompleted && !isTyping && (
-          <div className="mb-6 sm:mb-8">
-            <PressureTimer
-              initialSeconds={dialogue.pressureTimer}
-              onSuccess={() => {
-                addWisdom(50);
-                setTimerCompleted(true);
-                setShowTimer(false);
-                createParticleBurst('🛡️', 8);
-              }}
-              onTimeout={() => {
-                addWisdom(-20);
-                setTimerCompleted(true);
-                createParticleBurst('💔', 5);
-              }}
-            />
-          </div>
+          <PressureTimer
+            initialSeconds={dialogue.pressureTimer}
+            onSuccess={() => {
+              addWisdom(20, 'Ты выдержал давление и не спешил');
+              setTimerCompleted(true);
+              setShowTimer(false);
+            }}
+            onTimeout={() => {
+              addWisdom(-10, 'Срок вышел: в спешке решения слабее');
+              setTimerCompleted(true);
+            }}
+          />
         )}
-        
-        {/* Калькулятор потерь */}
-        {dialogue.calculator && !isTyping && (
-          <div className="mb-6 sm:mb-8">
-            <LossCalculator />
-          </div>
-        )}
-        
-        {/* Игра сопоставления */}
+
+        {dialogue.calculator && !isTyping && <div className="mb-5"><LossCalculator /></div>}
         {dialogue.matchGame && !isTyping && (
-          <div className="mb-6 sm:mb-8">
-            <MatchGame onComplete={(score) => {
-              addWisdom(score * 2);
-              createParticleBurst('🎯', 10);
-            }} />
+          <div className="mb-5">
+            <MatchGame onComplete={(score) => addWisdom(score * 2, 'Игра на сопоставление')} />
           </div>
         )}
-        
-        {/* Детектор лжи */}
         {dialogue.lieDetector && !isTyping && (
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-5">
             <LieDetector
               character={dialogue.lieDetector.character}
               lies={dialogue.lieDetector.segments}
-              onComplete={(score) => {
-                addWisdom(score);
-                if (score >= 80) {
-                  createParticleBurst('🏆', 15);
-                }
-              }}
+              onComplete={(score) => addWisdom(score, 'Разбор сомнительных фраз')}
             />
           </div>
         )}
-        
-        {/* Interactive Elements Buttons */}
+
         {!isTyping && (dialogue.presentation || dialogue.microscope) && (
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 animate-slide-in-bottom">
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
             {dialogue.presentation && (
-              <button
-                onClick={() => setShowPresentation(true)}
-                className="flex-1 px-4 sm:px-6 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl bg-gradient-to-r from-yellow-500 to-orange-600 hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2"
-              >
-                <span className="text-2xl">📊</span>
-                <span>Посмотреть презентацию</span>
+              <button type="button" className="btn flex-1" onClick={() => setShowPresentation(true)}>
+                Посмотреть презентацию
               </button>
             )}
             {dialogue.microscope && (
-              <button
-                onClick={() => setShowMicroscope(true)}
-                className="flex-1 px-4 sm:px-6 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2"
-              >
-                <span className="text-2xl">🔬</span>
-                <span>Изучить микроскопом</span>
+              <button type="button" className="btn flex-1" onClick={() => setShowMicroscope(true)}>
+                Открыть договор
               </button>
             )}
           </div>
         )}
-        
-        {/* Choices */}
-        {showChoices && (
-          <div className="space-y-3 sm:space-y-4 animate-slide-in-bottom">
-            {dialogue.choices.map((choice, index) => (
-              <button
-                key={index}
-                className="w-full p-4 sm:p-5 text-base sm:text-lg text-left flex items-center gap-2 sm:gap-3 bg-white/15 backdrop-blur-lg border-2 border-white/30 rounded-xl hover:bg-white/25 hover:translate-x-2 hover:scale-105 transition-all shadow-lg break-words word-wrap"
-                onClick={() => handleChoice(choice)}
-                style={{ animationDelay: `${index * 150}ms` }}
-              >
-                <span className="text-2xl sm:text-3xl flex-shrink-0">{choice.icon}</span>
-                <span className="break-words word-wrap leading-relaxed">{choice.text}</span>
+
+        {showChoices && !pendingChoice && (
+          <div className="space-y-3 motion-stagger">
+            {dialogue.choices.map((choice) => (
+              <button key={choice.text} type="button" className="choice-card motion-choice" onClick={() => handleChoice(choice)}>
+                <span aria-hidden="true">{choice.icon}</span>
+                <span>{choice.text}</span>
               </button>
             ))}
           </div>
         )}
+
+        {pendingChoice && (
+          <section className="surface-card mt-4" aria-live="polite">
+            <h3 className="font-bold mb-2">Что это значит</h3>
+            <p className="mb-3 leading-relaxed">
+              {pendingChoice.feedback
+                || (pendingChoice.wisdom && pendingChoice.wisdom < 0
+                  ? 'Этот выбор слабее защищает деньги. Дальше разберём, какой факт стоит проверить.'
+                  : 'Ты выбрал более осторожный путь. Дальше закрепим, что именно здесь важно.')}
+            </p>
+            {lastScoreEvent && <p className="text-sm mb-4">{describeScoreEvent(lastScoreEvent)}</p>}
+            <button type="button" className="btn btn-primary" onClick={() => goNext(pendingChoice)}>
+              Далее
+            </button>
+          </section>
+        )}
       </div>
-      
-      {/* Presentation Modal */}
+
       {showPresentation && dialogue.presentation && (
-        <PresentationViewer 
-          slides={dialogue.presentation}
-          onClose={() => setShowPresentation(false)}
-        />
+        <PresentationViewer slides={dialogue.presentation} onClose={() => setShowPresentation(false)} />
       )}
-      
-      {/* Microscope Modal */}
       {showMicroscope && dialogue.microscope && (
         <MicroscopeView
           title={dialogue.microscope.title}
@@ -320,15 +298,10 @@ export function DialogueScene() {
           onClose={() => setShowMicroscope(false)}
         />
       )}
-      
-      {/* Red Flag Modal */}
       {selectedRedFlag && (
-        <RedFlagModal
-          flag={selectedRedFlag}
-          onClose={() => setSelectedRedFlag(null)}
-        />
+        <RedFlagModal flag={selectedRedFlag} onClose={() => setSelectedRedFlag(null)} />
       )}
-    </div>
+      <LiveRegion message={lastScoreEvent ? describeScoreEvent(lastScoreEvent) : ''} />
+    </main>
   );
 }
-

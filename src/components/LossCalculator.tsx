@@ -1,243 +1,129 @@
-import { useState } from 'react';
-
-interface CalculatorScenario {
-  name: string;
-  initialFee?: number; // фиксированная комиссия
-  monthlyFeePercent?: number; // ежемесячная комиссия в %
-  yearlyInterest?: number; // годовой процент
-  withdrawalFeePercent?: number; // комиссия за вывод в %
-  earlyWithdrawalPenalty?: number; // штраф за досрочный вывод в %
-  lockPeriodMonths?: number; // период блокировки в месяцах
-  description: string;
-}
-
-const scenarios: CalculatorScenario[] = [
-  {
-    name: 'Быстрый займ (300% годовых)',
-    yearlyInterest: 300,
-    withdrawalFeePercent: 0,
-    lockPeriodMonths: 0,
-    description: 'Риск долговой спирали: высокая ставка резко увеличивает итоговый долг'
-  },
-  {
-    name: 'Инвестиции с комиссиями',
-    initialFee: 500,
-    monthlyFeePercent: 5,
-    withdrawalFeePercent: 3,
-    earlyWithdrawalPenalty: 50,
-    lockPeriodMonths: 3,
-    description: 'Инвестиции с множеством скрытых платежей'
-  },
-  {
-    name: 'MLM пирамида',
-    monthlyFeePercent: 10,
-    yearlyInterest: -50,
-    lockPeriodMonths: 12,
-    description: 'Доход зависит от притока новых участников и часто не имеет устойчивой экономики'
-  }
-];
+import { useMemo, useState } from 'react';
+import {
+  CALCULATOR_LIMITS,
+  CALCULATOR_SCENARIOS,
+  calculateScenario,
+  validateCalculatorInput,
+  type CalculatorScenario,
+} from '../lib/calculator';
 
 interface LossCalculatorProps {
   scenario?: CalculatorScenario;
 }
 
 export function LossCalculator({ scenario }: LossCalculatorProps) {
-  const [amount, setAmount] = useState<string>('10000');
-  const [months, setMonths] = useState<number>(12);
-  const [selectedScenario, setSelectedScenario] = useState<CalculatorScenario>(
-    scenario || scenarios[0]
-  );
-  
-  const calculateLoss = () => {
-    const principal = parseFloat(amount) || 0;
-    let total = principal;
-    let fees = 0;
-    
-    // Начальная комиссия
-    if (selectedScenario.initialFee) {
-      fees += selectedScenario.initialFee;
-      total -= selectedScenario.initialFee;
-    }
-    
-    // Ежемесячные комиссии
-    if (selectedScenario.monthlyFeePercent) {
-      const monthlyFee = (principal * selectedScenario.monthlyFeePercent / 100) * months;
-      fees += monthlyFee;
-      total -= monthlyFee;
-    }
-    
-    // Годовой процент (может быть как прибыль, так и убыток)
-    if (selectedScenario.yearlyInterest) {
-      const years = months / 12;
-      const interestAmount = principal * (selectedScenario.yearlyInterest / 100) * years;
-      total += interestAmount;
-    }
-    
-    // Комиссия за вывод
-    if (selectedScenario.withdrawalFeePercent && total > 0) {
-      const withdrawalFee = total * (selectedScenario.withdrawalFeePercent / 100);
-      fees += withdrawalFee;
-      total -= withdrawalFee;
-    }
-    
-    // Штраф за досрочный вывод
-    if (selectedScenario.earlyWithdrawalPenalty && months < (selectedScenario.lockPeriodMonths || 0)) {
-      const penalty = principal * (selectedScenario.earlyWithdrawalPenalty / 100);
-      fees += penalty;
-      total -= penalty;
-    }
-    
-    const loss = principal - total;
-    const lossPercent = (loss / principal) * 100;
-    
-    return {
-      principal,
-      total: Math.max(0, total),
-      loss: Math.max(0, loss),
-      lossPercent: lossPercent,
-      fees
-    };
-  };
-  
-  const result = calculateLoss();
-  
+  const [amount, setAmount] = useState('10000');
+  const [months, setMonths] = useState('12');
+  const [selectedScenario, setSelectedScenario] = useState<CalculatorScenario>(scenario || CALCULATOR_SCENARIOS[0]);
+  const validation = validateCalculatorInput(amount, months);
+  const result = useMemo(() => {
+    if (!validation.ok || validation.amount === null || validation.months === null) return null;
+    return calculateScenario(selectedScenario, validation.amount, validation.months);
+  }, [selectedScenario, validation]);
+
   return (
-    <div className="glass-card max-w-4xl mx-auto">
-      <div className="text-center mb-6">
-        <div className="text-5xl sm:text-6xl mb-3">🧮</div>
-        <h3 className="text-2xl sm:text-3xl font-bold mb-2 break-words">
-          Калькулятор реальных потерь
-        </h3>
-        <p className="text-sm sm:text-base opacity-90 break-words word-wrap">
-          Посчитайте, сколько денег вы реально потеряете
-        </p>
-        <p className="text-xs sm:text-sm opacity-75 break-words word-wrap mt-2">
-          Если обещают рост вроде "10 000 ₽ → 40 000 ₽" без понятного источника дохода, это серьёзный красный флаг.
-        </p>
-      </div>
-      
-      {/* Выбор сценария */}
+    <section className="surface-card max-w-4xl mx-auto">
+      <h3 className="text-2xl font-bold mb-2">Калькулятор условий</h3>
+      <p className="mb-4 text-white/80">
+        Учебная модель. Она не считает ПСК, налог и инфляцию и не является финансовой рекомендацией.
+      </p>
+
       {!scenario && (
-        <div className="mb-6">
-          <label className="block text-base font-semibold mb-3">Выберите сценарий:</label>
+        <fieldset className="mb-5">
+          <legend className="font-semibold mb-2">Сценарий</legend>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {scenarios.map((s, index) => (
+            {CALCULATOR_SCENARIOS.map((item) => (
               <button
-                key={index}
-                onClick={() => setSelectedScenario(s)}
-                className={`p-3 text-sm rounded-lg transition-all ${
-                  selectedScenario.name === s.name
-                    ? 'bg-danger text-white border-2 border-danger'
-                    : 'bg-white/20 hover:bg-white/30 border-2 border-white/30'
-                }`}
+                key={item.id}
+                type="button"
+                className="choice-card"
+                data-state={selectedScenario.id === item.id ? 'selected' : 'default'}
+                onClick={() => setSelectedScenario(item)}
               >
-                {s.name}
+                {item.name}
               </button>
             ))}
           </div>
-          <p className="text-xs sm:text-sm mt-2 opacity-70 break-words">
-            {selectedScenario.description}
-          </p>
-        </div>
+          <p className="text-sm mt-2 text-white/75">{selectedScenario.description}</p>
+        </fieldset>
       )}
-      
-      {/* Ввод данных */}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div>
-          <label htmlFor="amount" className="block text-sm sm:text-base font-semibold mb-2">
-            💰 Сумма вложения (₽):
-          </label>
+          <label htmlFor="calc-amount" className="block font-semibold mb-2">Сумма, ₽</label>
           <input
-            type="number"
-            id="amount"
+            id="calc-amount"
+            type="text"
+            inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            min="0"
-            className="w-full px-4 py-3 text-base rounded-xl bg-white/10 border-2 border-white/30 focus:border-primary focus:outline-none transition-all text-white"
+            aria-invalid={Boolean(validation.errors.amount)}
+            aria-describedby="calc-amount-hint calc-amount-error"
+            className="w-full min-h-11 px-4 rounded-xl bg-white/10 border-2 border-white/30"
           />
+          <p id="calc-amount-hint" className="text-sm mt-1 text-white/70">
+            От {CALCULATOR_LIMITS.minAmount} до {CALCULATOR_LIMITS.maxAmount.toLocaleString('ru-RU')}
+          </p>
+          {validation.errors.amount && <p id="calc-amount-error" className="text-sm text-danger mt-1">{validation.errors.amount}</p>}
         </div>
-        
         <div>
-          <label htmlFor="months" className="block text-sm sm:text-base font-semibold mb-2">
-            📅 Срок (месяцев):
-          </label>
+          <label htmlFor="calc-months" className="block font-semibold mb-2">Срок, месяцы</label>
           <input
-            type="number"
-            id="months"
+            id="calc-months"
+            type="text"
+            inputMode="numeric"
             value={months}
-            onChange={(e) => setMonths(parseInt(e.target.value) || 1)}
-            min="1"
-            max="60"
-            className="w-full px-4 py-3 text-base rounded-xl bg-white/10 border-2 border-white/30 focus:border-primary focus:outline-none transition-all text-white"
+            onChange={(e) => setMonths(e.target.value)}
+            aria-invalid={Boolean(validation.errors.months)}
+            aria-describedby="calc-months-hint calc-months-error"
+            className="w-full min-h-11 px-4 rounded-xl bg-white/10 border-2 border-white/30"
           />
+          <p id="calc-months-hint" className="text-sm mt-1 text-white/70">
+            Целое число от {CALCULATOR_LIMITS.minMonths} до {CALCULATOR_LIMITS.maxMonths}
+          </p>
+          {validation.errors.months && <p id="calc-months-error" className="text-sm text-danger mt-1">{validation.errors.months}</p>}
         </div>
       </div>
-      
-      {/* Визуализация */}
-      <div className="bg-white/5 rounded-xl p-4 sm:p-6 mb-6">
-        <div className="flex items-center justify-between mb-6">
-          {/* Вложили */}
-          <div className="text-center flex-1">
-            <div className="text-3xl sm:text-4xl mb-2">💸</div>
-            <div className="text-lg sm:text-xl font-bold text-success">
-              {result.principal.toLocaleString('ru-RU')} ₽
+
+      {result && (
+        <div className="bg-white/5 rounded-xl p-4 sm:p-6">
+          {result.kind === 'loan' ? (
+            <div className="grid sm:grid-cols-3 gap-3 mb-4">
+              <Metric label="Получено в долг" value={`${result.invested.toLocaleString('ru-RU')} ₽`} />
+              <Metric label="Сумма долга" value={`${result.debt?.toLocaleString('ru-RU')} ₽`} />
+              <Metric label="Переплата" value={`${result.overpayment?.toLocaleString('ru-RU')} ₽`} />
             </div>
-            <div className="text-xs sm:text-sm opacity-70">Вложили</div>
-          </div>
-          
-          {/* Стрелка */}
-          <div className="flex-shrink-0 mx-4">
-            <svg className="w-12 h-12 sm:w-16 sm:h-16 text-danger" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </div>
-          
-          {/* Получили */}
-          <div className="text-center flex-1">
-            <div className="text-3xl sm:text-4xl mb-2">💔</div>
-            <div className="text-lg sm:text-xl font-bold text-danger">
-              {result.total.toLocaleString('ru-RU')} ₽
+          ) : (
+            <div className="grid sm:grid-cols-3 gap-3 mb-4">
+              <Metric label="Вложено и взносы" value={`${(result.invested + (result.kind === 'mlm' ? result.fees : 0)).toLocaleString('ru-RU')} ₽`} />
+              <Metric label="Можно получить" value={`${result.received.toLocaleString('ru-RU')} ₽`} />
+              <Metric label="Потери" value={`${result.loss.toLocaleString('ru-RU')} ₽`} />
             </div>
-            <div className="text-xs sm:text-sm opacity-70">Получили</div>
-          </div>
+          )}
+          <p className="mb-3"><strong>Формула:</strong> {result.formula}</p>
+          <h4 className="font-bold mb-2">Пошаговый расчёт</h4>
+          <ol className="space-y-2 list-decimal pl-5 mb-4">
+            {result.steps.map((step) => (
+              <li key={step.label}>
+                <strong>{step.label}:</strong> {step.detail}. Значение: {step.value.toLocaleString('ru-RU')}
+              </li>
+            ))}
+          </ol>
+          <h4 className="font-bold mb-2">Допущения</h4>
+          <ul className="list-disc pl-5 space-y-1 text-sm">
+            {result.assumptions.map((item) => <li key={item}>{item}</li>)}
+          </ul>
         </div>
-        
-        {/* Статистика потерь */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-danger/20 rounded-lg p-4 text-center border-2 border-danger/40">
-            <div className="text-2xl sm:text-3xl font-bold text-danger mb-1">
-              -{result.loss.toLocaleString('ru-RU')} ₽
-            </div>
-            <div className="text-xs sm:text-sm opacity-90">Потери</div>
-          </div>
-          
-          <div className="bg-danger/20 rounded-lg p-4 text-center border-2 border-danger/40">
-            <div className="text-2xl sm:text-3xl font-bold text-danger mb-1">
-              -{result.lossPercent.toFixed(1)}%
-            </div>
-            <div className="text-xs sm:text-sm opacity-90">Процент потерь</div>
-          </div>
-          
-          <div className="bg-danger/20 rounded-lg p-4 text-center border-2 border-danger/40">
-            <div className="text-2xl sm:text-3xl font-bold text-danger mb-1">
-              {result.fees.toLocaleString('ru-RU')} ₽
-            </div>
-            <div className="text-xs sm:text-sm opacity-90">Комиссии</div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Предупреждение */}
-      <div className="bg-primary/20 border-2 border-primary/40 rounded-xl p-4 sm:p-5">
-        <div className="text-base sm:text-lg font-bold mb-2">⚠️ Важно понимать:</div>
-        <ul className="space-y-2 text-sm sm:text-base break-words word-wrap leading-relaxed">
-          <li>• Все комиссии и проценты складываются</li>
-          <li>• Мошенники скрывают реальные цифры в мелком шрифте</li>
-          <li>• Прежде чем вкладывать — посчитайте реальную выгоду</li>
-          <li>• Если не можете посчитать — не вкладывайте!</li>
-        </ul>
-      </div>
-    </div>
+      )}
+    </section>
   );
 }
 
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white/10 rounded-lg p-3 text-center">
+      <p className="text-xl font-bold">{value}</p>
+      <p className="text-sm">{label}</p>
+    </div>
+  );
+}

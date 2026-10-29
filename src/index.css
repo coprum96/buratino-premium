@@ -2,17 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg-1: #4c3d8f;
+  --color-bg-2: #5b3a7a;
+  --color-surface: rgba(255, 255, 255, 0.1);
+  --color-surface-strong: rgba(255, 255, 255, 0.16);
+  --color-border: rgba(255, 255, 255, 0.24);
+  --color-text: #f8f5ff;
+  --color-muted: rgba(248, 245, 255, 0.78);
+  --color-primary: #7c3aed;
+  --color-secondary: #f59e0b;
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-focus: #fde68a;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --line-max: 42rem;
+}
+
 @layer base {
   * {
     @apply m-0 p-0 box-border;
   }
   
   body {
-    @apply font-sans overflow-x-hidden text-white min-h-screen;
+    @apply font-sans overflow-x-hidden min-h-screen;
+    color: var(--color-text);
+    line-height: 1.6;
   }
   
   #root {
     @apply min-h-screen relative;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
   }
 }
 
@@ -24,36 +55,76 @@
     animation: gradientShift 15s ease infinite;
   }
   
-  .glass-card {
-    @apply bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  .glass-card,
+  .surface-card {
+    background: var(--color-surface);
+    @apply backdrop-blur-lg p-6 sm:p-8;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
+
+  .prose-narrow {
+    max-width: var(--line-max);
+    @apply mx-auto leading-relaxed;
   }
   
-  .glass-card:hover {
-    @apply -translate-y-1;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  }
-  
-  .btn {
-    @apply px-8 py-4 text-lg font-semibold rounded-xl cursor-pointer;
-    @apply transition-all duration-300 relative overflow-hidden;
+  .btn,
+  .btn-icon {
+    min-height: 44px;
+    min-width: 44px;
+    @apply px-5 py-3 text-base font-semibold rounded-xl cursor-pointer;
+    @apply transition-all duration-200 relative;
     @apply bg-white/20 backdrop-blur-lg text-white border-2 border-white/30;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .btn-icon {
+    @apply px-0 py-0 inline-flex items-center justify-center;
   }
   
-  .btn:hover {
-    @apply scale-105;
-    box-shadow: 0 0 30px rgba(147, 51, 234, 0.5);
+  .btn:hover:not(:disabled) {
+    background: var(--color-surface-strong);
   }
   
-  .btn:active {
+  .btn:active:not(:disabled) {
     @apply scale-95;
+  }
+
+  .btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
   
   .btn-primary {
     @apply bg-gradient-to-br from-primary to-purple-700;
-    animation: float 2s ease-in-out infinite;
+  }
+
+  .btn-danger {
+    @apply bg-danger/80 border-danger;
+  }
+
+  .choice-card {
+    @apply w-full min-h-11 p-4 text-left flex items-center gap-3 rounded-xl border-2 border-white/30 bg-white/10;
+  }
+
+  .choice-card[data-state='hover'],
+  .choice-card:hover:not(:disabled) {
+    @apply bg-white/20;
+  }
+
+  .choice-card:focus-visible {
+    outline: 3px solid var(--color-focus);
+  }
+
+  .choice-card[data-state='selected'] {
+    @apply border-secondary bg-secondary/20;
+  }
+
+  .choice-card[data-state='correct'] {
+    @apply border-success bg-success/20;
+  }
+
+  .choice-card[data-state='incorrect'] {
+    @apply border-danger bg-danger/20;
   }
   
   .particle {
@@ -161,5 +232,15 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 

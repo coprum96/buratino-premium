@@ -1,145 +1,111 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { FaBook, FaLightbulb } from 'react-icons/fa';
+import { getEndingContent } from '../lib/endings';
 import { useGameStore } from '../store/gameStore';
-import { tips } from '../data/gameData';
-import { EmailForm } from './EmailForm';
-import { FaLightbulb, FaClipboardList, FaTrophy, FaCheckCircle, FaGraduationCap, FaBook, FaUsers } from 'react-icons/fa';
-import { GiPartyPopper } from 'react-icons/gi';
 import { sessionAnalytics } from '../utils/sessionAnalytics';
+import { EmailForm } from './EmailForm';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 export function EndingScreen() {
-  const { coins, wisdom, achievements, postTestScore, resetGame } = useGameStore();
-  const [showEmailForm, setShowEmailForm] = useState(true);
-  
-  // Завершаем сессию при достижении финального экрана
+  const { coins, wisdom, postTestScore, resetGame, getEndingId, getFinalScore, toggleMaterialsPanel, toggleAchievementGallery, achievementUnlocks } = useGameStore();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const ending = getEndingContent(getEndingId(), coins);
+  const finalScore = getFinalScore();
+
   useEffect(() => {
-    sessionAnalytics.updateFinalStats(coins, wisdom, achievements);
+    sessionAnalytics.updateFinalStats(coins, wisdom, Object.keys(achievementUnlocks));
     sessionAnalytics.endSession();
-  }, [coins, wisdom, achievements]);
-  
+  }, [achievementUnlocks, coins, wisdom]);
+
   return (
-    <div className="min-h-screen pt-28 pb-10">
-      <div className="container max-w-4xl mx-auto px-5">
-        <div className="glass-card text-center animate-scale-in">
-          <h1 className="text-5xl font-bold mb-6 flex items-center justify-center gap-3">
-            <GiPartyPopper className="text-yellow-400" />
-            Поздравляем!
-          </h1>
-          
-          <p className="text-2xl mb-8 opacity-90">
-            Ты прошёл все испытания и стал настоящим Финансовым Детективом!
+    <main className="min-h-screen pt-24 pb-10 px-4">
+      <div className="surface-card max-w-3xl mx-auto motion-scene">
+        <p className="text-sm uppercase tracking-wide mb-2">
+          {ending.tone === 'success' ? 'Безопасный исход' : ending.tone === 'caution' ? 'Пауза и проверка' : 'Потеря денег'}
+        </p>
+        <h1 className="text-4xl font-bold mb-4">{ending.title}</h1>
+        <p className="text-lg leading-relaxed mb-4">{ending.summary}</p>
+        <p className="mb-6">{ending.coinsNote}</p>
+
+        <section className="grid sm:grid-cols-3 gap-3 mb-8">
+          <div className="bg-white/10 rounded-xl p-4 text-center">
+            <p className="text-3xl font-bold">{coins}</p>
+            <p>Монет сейчас</p>
+          </div>
+          <div className="bg-white/10 rounded-xl p-4 text-center">
+            <p className="text-3xl font-bold">{wisdom}%</p>
+            <p>Мудрость</p>
+          </div>
+          <div className="bg-white/10 rounded-xl p-4 text-center">
+            <p className="text-3xl font-bold">{postTestScore}/10</p>
+            <p>Независимая проверка</p>
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-3">Что делать дальше</h2>
+          <ol className="space-y-2 list-decimal pl-5">
+            {ending.actions.map((action) => <li key={action}>{action}</li>)}
+          </ol>
+        </section>
+
+        <section className="mb-8 p-4 rounded-xl bg-white/10">
+          <h2 className="text-2xl font-bold mb-2">Итоговая оценка: {finalScore.total}/100</h2>
+          <p className="mb-2 text-sm text-white/80">
+            Тесты {finalScore.parts.tests}, сюжет {finalScore.parts.story}, монеты {finalScore.parts.coins}, независимая проверка {finalScore.parts.checks}.
           </p>
-          
-          {/* Stats */}
-          <div className="flex justify-center gap-8 mb-8 flex-wrap">
-            <div className="bg-white/15 backdrop-blur-lg p-6 rounded-2xl border-2 border-white/30 min-w-[150px]">
-              <div className="text-5xl font-bold mb-2">🪙</div>
-              <div className="text-4xl font-bold mb-2">{coins}</div>
-              <div className="text-base opacity-90">Монет</div>
-            </div>
-            
-            <div className="bg-white/15 backdrop-blur-lg p-6 rounded-2xl border-2 border-white/30 min-w-[150px]">
-              <div className="text-5xl font-bold mb-2 flex justify-center">
-                <FaLightbulb className="text-yellow-400" />
-              </div>
-              <div className="text-4xl font-bold mb-2">{wisdom}%</div>
-              <div className="text-base opacity-90">Мудрости</div>
-            </div>
-            
-            <div className="bg-white/15 backdrop-blur-lg p-6 rounded-2xl border-2 border-white/30 min-w-[150px]">
-              <div className="text-5xl font-bold mb-2 flex justify-center">
-                <FaClipboardList className="text-blue-400" />
-              </div>
-              <div className="text-4xl font-bold mb-2">{postTestScore}/10</div>
-              <div className="text-base opacity-90">Финальный тест</div>
-            </div>
-          </div>
-          
-          {/* Achievements */}
-          {achievements.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-3xl font-bold mb-4 flex items-center justify-center gap-3">
-                <FaTrophy className="text-yellow-400" />
-                Достижения
-              </h3>
-              <div className="flex flex-wrap justify-center gap-4">
-                {achievements.map((achievement, index) => (
-                  <div 
-                    key={index}
-                    className="text-2xl p-4 bg-gradient-to-br from-secondary to-orange-400 rounded-xl inline-block animate-float"
-                  >
-                    {achievement}
-                  </div>
-                ))}
-              </div>
+          {finalScore.earnsCertificate ? (
+            <p>Критерии сертификата выполнены: осторожный финал, сохранённые монеты и достаточный результат проверки.</p>
+          ) : (
+            <div>
+              <p className="mb-2">Сертификат пока не выдаём: исход или баллы ниже прозрачного порога.</p>
+              <p className="font-semibold">Имеет смысл повторить:</p>
+              <ul className="list-disc pl-5">
+                {finalScore.reviewTopics.map((topic) => <li key={topic}>{topic}</li>)}
+              </ul>
             </div>
           )}
-          
-          {/* Tips Section */}
-          <div className="mt-8 text-left">
-            <h3 className="text-3xl font-bold mb-6 text-center flex items-center justify-center gap-3">
-              <FaLightbulb className="text-yellow-400" />
-              Помни эти правила:
-            </h3>
-            <div className="space-y-3">
-              {tips.map((tip, index) => (
-                <div 
-                  key={index}
-                  className="p-4 bg-white/10 rounded-xl border-l-4 border-success"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  {tip}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Call to Action */}
-          <div className="mt-12 p-6 bg-primary/20 rounded-2xl border-2 border-primary/40">
-            <h3 className="text-2xl font-bold mb-4 flex items-center justify-center gap-3">
-              <FaGraduationCap className="text-primary" />
-              Ты теперь можешь:
-            </h3>
-            <ul className="text-lg text-left max-w-2xl mx-auto space-y-2">
-              <li className="flex items-center gap-2"><FaCheckCircle className="text-success flex-shrink-0" /> Распознавать финансовое мошенничество</li>
-              <li className="flex items-center gap-2"><FaCheckCircle className="text-success flex-shrink-0" /> Задавать правильные контрольные вопросы</li>
-              <li className="flex items-center gap-2"><FaCheckCircle className="text-success flex-shrink-0" /> Видеть красные флажки</li>
-              <li className="flex items-center gap-2"><FaCheckCircle className="text-success flex-shrink-0" /> Защищать свои деньги и деньги близких</li>
-              <li className="flex items-center gap-2"><FaCheckCircle className="text-success flex-shrink-0" /> Делиться знаниями с друзьями</li>
-            </ul>
-          </div>
-          
-          {/* Email Form */}
-          {showEmailForm && (
-            <div className="mt-12">
-              <EmailForm onSubmit={() => setShowEmailForm(false)} />
-            </div>
-          )}
-          
-          {/* Buttons */}
-          <div className="mt-8 flex gap-4 justify-center flex-wrap">
-            <button 
-              className="btn btn-primary"
-              onClick={resetGame}
-            >
-              🔄 Играть снова
-            </button>
-            
-            <button 
-              className="btn bg-secondary"
-              onClick={() => useGameStore.getState().toggleMaterialsPanel()}
-            >
-              <FaBook className="inline mr-2" />
-              Открыть справочник
-            </button>
-          </div>
-          
-          <div className="mt-8 text-lg opacity-80 flex items-center justify-center gap-2">
-            <FaUsers />
-            Расскажи друзьям о том, что узнал! Вместе мы защитим больше людей от мошенников!
-          </div>
+        </section>
+
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-3 flex items-center gap-2">
+            <FaLightbulb aria-hidden="true" />
+            Короткие правила
+          </h2>
+          <ul className="space-y-2">
+            <li>Дискомфорт — повод остановиться и перепроверить, не доказательство обмана.</li>
+            <li>Регистрация, печать или лицензия не равны добросовестности.</li>
+            <li>Сложные условия сами по себе не делают продукт мошенническим.</li>
+          </ul>
+        </div>
+
+        <EmailForm />
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <button type="button" className="btn btn-primary" onClick={() => setConfirmReset(true)}>
+            Начать заново
+          </button>
+          <button type="button" className="btn" onClick={toggleAchievementGallery}>
+            Достижения
+          </button>
+          <button type="button" className="btn" onClick={toggleMaterialsPanel}>
+            <FaBook className="inline mr-2" aria-hidden="true" />
+            Открыть справочник
+          </button>
         </div>
       </div>
-    </div>
+
+      {confirmReset && (
+        <ConfirmDialog
+          title="Начать заново?"
+          message="Текущий прогресс и результаты будут удалены."
+          onConfirm={() => {
+            resetGame();
+            setConfirmReset(false);
+          }}
+          onCancel={() => setConfirmReset(false)}
+        />
+      )}
+    </main>
   );
 }
-

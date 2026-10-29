@@ -1,0 +1,279 @@
+:root {
+  --motion-fast: 180ms;
+  --motion-base: 280ms;
+  --motion-slow: 480ms;
+  --motion-enter: 640ms;
+  --motion-scene: 900ms;
+  --motion-unlock: 3200ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-dim: cubic-bezier(0.33, 0, 0.2, 1);
+  --motion-stagger: 70ms;
+}
+
+.motion-enter {
+  animation: gdEnter var(--motion-enter) var(--motion-ease-enter) both;
+}
+
+.motion-scene {
+  animation: gdScene var(--motion-scene) var(--motion-ease-dim) both;
+}
+
+.motion-stagger > * {
+  animation: gdEnter var(--motion-base) var(--motion-ease-out) both;
+}
+
+.motion-stagger > *:nth-child(1) { animation-delay: calc(var(--motion-stagger) * 0); }
+.motion-stagger > *:nth-child(2) { animation-delay: calc(var(--motion-stagger) * 1); }
+.motion-stagger > *:nth-child(3) { animation-delay: calc(var(--motion-stagger) * 2); }
+.motion-stagger > *:nth-child(4) { animation-delay: calc(var(--motion-stagger) * 3); }
+.motion-stagger > *:nth-child(5) { animation-delay: calc(var(--motion-stagger) * 4); }
+.motion-stagger > *:nth-child(6) { animation-delay: calc(var(--motion-stagger) * 5); }
+
+.motion-choice {
+  transition: background-color var(--motion-fast) var(--motion-ease-inout),
+    border-color var(--motion-fast) var(--motion-ease-inout),
+    transform var(--motion-fast) var(--motion-ease-out);
+}
+
+.motion-choice:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.choice-card[data-state='correct'] {
+  animation: gdCorrect var(--motion-slow) var(--motion-ease-out);
+}
+
+.choice-card[data-state='incorrect'] {
+  animation: gdIncorrect var(--motion-base) var(--motion-ease-inout);
+}
+
+.motion-danger {
+  animation: gdTension var(--motion-slow) var(--motion-ease-dim);
+}
+
+.motion-score-up {
+  animation: gdScore var(--motion-slow) var(--motion-ease-out);
+}
+
+.motion-chapter {
+  animation: gdChapter var(--motion-scene) var(--motion-ease-enter) both;
+}
+
+.badge-stage {
+  perspective: 900px;
+  width: min(240px, 62vw);
+  height: min(240px, 62vw);
+  margin: 0 auto;
+}
+
+.badge-3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  will-change: transform;
+  border-radius: 50%;
+  --badge-shine-x: 50%;
+  --badge-shine-y: 36%;
+}
+
+.badge-plate,
+.badge-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  backface-visibility: hidden;
+}
+
+.badge-edge {
+  transform: translateZ(-10px) scale(0.96);
+  background: linear-gradient(160deg, #8a5a12, #f5d27a 45%, #5a3b0c);
+}
+
+.badge-plate {
+  transform: translateZ(8px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255, 236, 179, 0.45), transparent 42%),
+    linear-gradient(160deg, #f8e7a4, #c7922a 55%, #6b4710);
+  border: 3px solid rgba(255, 224, 140, 0.7);
+}
+
+.badge-emblem {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  position: absolute;
+  inset: 11%;
+  pointer-events: none;
+}
+
+.badge-rays {
+  position: absolute;
+  inset: -18%;
+  width: 136%;
+  height: 136%;
+  object-fit: contain;
+  opacity: 0.72;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.badge-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--badge-shine-x) var(--badge-shine-y),
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.08) 28%,
+    transparent 46%
+  );
+}
+
+.gold-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.unlock-root {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.unlock-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 10, 36, 0.72);
+  transform: scale(1.03);
+  animation: gdDim var(--motion-slow) var(--motion-ease-dim) both;
+}
+
+.unlock-glow {
+  position: absolute;
+  width: min(420px, 80vw);
+  height: min(420px, 80vw);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.38) 0%, transparent 68%);
+  animation: gdGlow var(--motion-enter) var(--motion-ease-enter) both;
+}
+
+.unlock-card {
+  position: relative;
+  width: min(36rem, 100%);
+  max-height: min(92vh, 860px);
+  overflow: auto;
+  padding: 1.5rem 1.25rem 1.25rem;
+  text-align: center;
+  background: rgba(28, 18, 52, 0.88);
+  border: 1px solid rgba(253, 230, 138, 0.28);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.unlock-copy {
+  opacity: 0;
+  animation: gdEnter var(--motion-enter) var(--motion-ease-enter) both;
+  animation-delay: 720ms;
+}
+
+.unlock-reason {
+  animation-delay: 980ms;
+}
+
+.unlock-cta {
+  margin-top: 1.25rem;
+  min-width: 12rem;
+}
+
+.unlock-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@keyframes gdEnter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gdScene {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes gdDim {
+  from { opacity: 0; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.03); }
+}
+
+@keyframes gdGlow {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes gdCorrect {
+  from { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.45); }
+  to { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); }
+}
+
+@keyframes gdIncorrect {
+  from { transform: translateX(0); }
+  30% { transform: translateX(-3px); }
+  60% { transform: translateX(3px); }
+  to { transform: translateX(0); }
+}
+
+@keyframes gdTension {
+  from { box-shadow: inset 0 0 0 0 rgba(248, 113, 113, 0.15); }
+  to { box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.45); }
+}
+
+@keyframes gdScore {
+  from { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  to { transform: scale(1); }
+}
+
+@keyframes gdChapter {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-enter,
+  .motion-scene,
+  .motion-chapter,
+  .motion-stagger > *,
+  .unlock-dim,
+  .unlock-glow,
+  .unlock-copy,
+  .choice-card[data-state='correct'],
+  .choice-card[data-state='incorrect'] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .badge-3d {
+    transform: none !important;
+  }
+
+  .gold-particle {
+    display: none !important;
+  }
+}

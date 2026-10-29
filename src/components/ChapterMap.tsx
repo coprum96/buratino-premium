@@ -1,138 +1,139 @@
-import { useGameStore } from '../store/gameStore';
+import { useState } from 'react';
+import { FaBook, FaCheckCircle, FaCrown, FaLock, FaRedo, FaStar } from 'react-icons/fa';
+import { CHAPTER_META, TOTAL_GAME_DURATION_MIN } from '../data/learningStages';
 import { levels } from '../data/gameData';
-import { FaBook, FaCheckCircle, FaStar, FaLock, FaCoins, FaTheaterMasks, FaCalculator, FaBoxes, FaChartLine, FaBullseye, FaFileAlt, FaTrophy, FaCrown } from 'react-icons/fa';
+import { completedChapterCount } from '../lib/progress';
+import { TOTAL_CHAPTERS } from '../lib/versions';
+import { useGameStore } from '../store/gameStore';
+import { ConfirmDialog } from './ui/ConfirmDialog';
+
+const ICONS = ['🪙', '🎭', '🧮', '🧺', '🫀', '🎯', '📋', '🏆'];
 
 export function ChapterMap() {
-  const { currentLevel, setPhase, completedLevels, checkLevelAccess, setPendingLevel } = useGameStore();
-  
+  const {
+    currentLevel,
+    completedChapters,
+    checkLevelAccess,
+    setPendingLevel,
+    setPhase,
+    enterChapter,
+    resetGame,
+    accessStatus,
+  } = useGameStore();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const completed = completedChapterCount(completedChapters);
+  const fullAccess = accessStatus === 'promo' || accessStatus === 'paid';
+
   const handleChapterClick = (levelIndex: number) => {
-    // Проверка: доступен ли уровень по прогрессу
-    if (levelIndex > currentLevel) {
-      return; // Ещё не достигнут
-    }
-    
-    // Проверка доступа (монетизация)
+    const isAvailable = levelIndex <= currentLevel || completedChapters.includes(levelIndex);
+    if (!isAvailable) return;
+
     if (!checkLevelAccess(levelIndex)) {
-      // Уровень заблокирован - показываем paywall
       setPendingLevel(levelIndex);
       setPhase('paywall');
       return;
     }
-    
-    // Доступ есть - запускаем уровень
-    useGameStore.setState({ currentLevel: levelIndex, currentDialogue: 0 });
-    setPhase('dialogue');
+
+    enterChapter(levelIndex);
   };
-  
+
   return (
-    <div className="min-h-screen pt-28 pb-10">
-      <div className="container max-w-6xl mx-auto px-5">
-        <h1 className="text-5xl font-bold mb-12 text-center text-shadow-glow animate-scale-in flex items-center justify-center gap-3">
-          <FaBook className="text-primary" />
-          Карта приключений
-        </h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <main className="min-h-screen pt-28 pb-10">
+      <div className="container max-w-6xl mx-auto px-4">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-3 flex items-center justify-center gap-3">
+            <FaBook aria-hidden="true" className="text-primary" />
+            Карта приключений
+          </h1>
+          <p className="text-white/80">
+            Ориентир по времени всей игры: около {TOTAL_GAME_DURATION_MIN} минут.
+          </p>
+          {fullAccess && (
+            <p className="mt-2 text-sm text-white/75">
+              Полный контент доступен. Главы открываются последовательно.
+            </p>
+          )}
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 motion-stagger">
           {levels.map((level, index) => {
-            const isAvailable = index <= currentLevel;
-            const isCompleted = completedLevels.includes(level.id);
-            const isCurrent = index === currentLevel;
-            const isPremium = index > 2; // Главы 3+ - платные
+            const meta = CHAPTER_META[index];
+            const isCompleted = completedChapters.includes(level.id);
+            const isAvailable = index <= currentLevel || isCompleted;
+            const isCurrent = index === currentLevel && !isCompleted;
+            const isPremium = index > 2;
             const hasAccess = checkLevelAccess(index);
-            
+
             return (
-              <div
+              <article
                 key={level.id}
-                className={`glass-card cursor-pointer relative overflow-hidden ${
-                  !isAvailable ? 'opacity-50 cursor-not-allowed' : ''
-                } ${isCurrent ? 'ring-4 ring-secondary' : ''}`}
-                style={{ 
-                  background: isAvailable ? level.gradient : 'rgba(255, 255, 255, 0.1)',
-                }}
-                onClick={() => handleChapterClick(index)}
+                className={`surface-card motion-chapter ${!isAvailable ? 'opacity-60' : ''}`}
+                style={{ background: isAvailable ? level.gradient : 'rgba(255,255,255,0.08)' }}
               >
-                {isCompleted && (
-                  <div className="absolute top-4 right-4 text-4xl animate-scale-in text-success">
-                    <FaCheckCircle />
-                  </div>
-                )}
-                
-                {isCurrent && !isCompleted && (
-                  <div className="absolute top-4 right-4 text-4xl animate-float text-yellow-400">
-                    <FaStar />
-                  </div>
-                )}
-                
-                {/* Premium badge */}
-                {isPremium && !hasAccess && (
-                  <div className="absolute top-4 left-4 flex items-center gap-1 bg-secondary/80 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-bold">
-                    <FaCrown className="text-yellow-300" />
-                    <span>PRO</span>
-                  </div>
-                )}
-                
-                <div className="text-center">
-                  <div className="text-6xl mb-4 animate-float">
-                    {[
-                      <FaCoins key="coin" className="mx-auto text-yellow-400" />,
-                      <FaTheaterMasks key="theater" className="mx-auto text-pink-400" />,
-                      <FaCalculator key="calc" className="mx-auto text-orange-400" />,
-                      <FaBoxes key="boxes" className="mx-auto text-teal-400" />,
-                      <FaChartLine key="chart" className="mx-auto text-blue-400" />,
-                      <FaBullseye key="target" className="mx-auto text-red-400" />,
-                      <FaFileAlt key="file" className="mx-auto text-purple-400" />,
-                      <FaTrophy key="trophy" className="mx-auto text-yellow-500" />
-                    ][index]}
-                  </div>
-                  
-                  <h3 className="text-2xl font-bold mb-2">
-                    Глава {index + 1}
-                  </h3>
-                  
-                  <h4 className="text-xl mb-2 opacity-90">
-                    {level.title}
-                  </h4>
-                  
-                  <p className="text-base opacity-80">
-                    {level.subtitle}
-                  </p>
-                  
-                  {!isAvailable && (
-                    <div className="mt-4 text-sm opacity-70 flex items-center justify-center gap-2">
-                      <FaLock />
-                      Заблокировано
-                    </div>
-                  )}
-                  
-                  {isAvailable && isPremium && !hasAccess && (
-                    <div className="mt-4">
-                      <button className="btn btn-secondary text-sm flex items-center gap-2 mx-auto">
-                        <FaCrown className="text-yellow-300" />
-                        Открыть доступ
-                      </button>
-                    </div>
-                  )}
-                  
-                  {isCurrent && hasAccess && (
-                    <div className="mt-4">
-                      <button className="btn btn-primary text-sm">
-                        Начать главу
-                      </button>
-                    </div>
-                  )}
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-4xl" aria-hidden="true">{ICONS[index]}</span>
+                  {isCompleted && <FaCheckCircle className="text-success text-2xl" aria-label="Глава завершена" />}
+                  {isCurrent && <FaStar className="text-yellow-300 text-2xl" aria-label="Текущая глава" />}
+                  {!isAvailable && <FaLock aria-label="Глава ещё закрыта" />}
                 </div>
-              </div>
+                <h2 className="text-2xl font-bold mb-1">Глава {index + 1}</h2>
+                <h3 className="text-lg mb-2">{level.title}</h3>
+                <p className="text-sm text-white/80 mb-3">{meta?.goal}</p>
+                <p className="text-sm mb-4">Около {meta?.durationMin ?? 8} минут</p>
+
+                {isPremium && !hasAccess && (
+                  <p className="text-sm mb-3 flex items-center gap-2">
+                    <FaCrown className="text-yellow-300" aria-hidden="true" />
+                    Нужен полный доступ
+                  </p>
+                )}
+
+                {isAvailable && hasAccess && (
+                  <button
+                    type="button"
+                    className="btn btn-primary w-full"
+                    onClick={() => handleChapterClick(index)}
+                  >
+                    {isCompleted ? 'Пройти ещё раз' : isCurrent ? 'Продолжить главу' : 'Начать главу'}
+                  </button>
+                )}
+
+                {isAvailable && isPremium && !hasAccess && (
+                  <button type="button" className="btn w-full" onClick={() => handleChapterClick(index)}>
+                    Открыть доступ
+                  </button>
+                )}
+
+                {!isAvailable && (
+                  <p className="text-sm text-white/70">Сначала заверши предыдущую главу.</p>
+                )}
+              </article>
             );
           })}
         </div>
-        
-        <div className="text-center mt-12">
-          <p className="text-xl opacity-90">
-            Пройдено глав: {completedLevels.length} из {levels.length}
+
+        <div className="text-center mt-10 space-y-4">
+          <p className="text-lg" title="Считаются только уникальные завершённые главы, максимум 8.">
+            Пройдено глав: {completed} из {TOTAL_CHAPTERS}
           </p>
+          <button type="button" className="btn inline-flex items-center gap-2" onClick={() => setConfirmReset(true)}>
+            <FaRedo aria-hidden="true" />
+            Начать заново
+          </button>
         </div>
       </div>
-    </div>
+
+      {confirmReset && (
+        <ConfirmDialog
+          title="Сбросить прогресс?"
+          message="Главы, монеты, мудрость, промокод и результаты будут удалены."
+          onConfirm={() => {
+            resetGame();
+            setConfirmReset(false);
+          }}
+          onCancel={() => setConfirmReset(false)}
+        />
+      )}
+    </main>
   );
 }
-

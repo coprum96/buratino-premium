@@ -14,6 +14,7 @@ export function ScenarioTest() {
   const scenario = scenarioTest[currentQuestion];
   
   const handleAnswer = (answerIndex: number) => {
+    if (answers.length > currentQuestion) return;
     const isCorrect = answerIndex === scenario.correct;
     
     // Сохраняем ответ для последующей отправки в аналитику
@@ -26,17 +27,17 @@ export function ScenarioTest() {
     
     if (isCorrect) {
       setCorrectAnswers(correctAnswers + 1);
-      addWisdom(scenario.reward);
+      addWisdom(scenario.reward, 'Верно отделено рискованное предложение от более прозрачного');
       createParticleBurst('✨', 5);
     }
-    
-    setTimeout(() => {
-      if (currentQuestion < scenarioTest.length - 1) {
-        setCurrentQuestion(currentQuestion + 1);
-      } else {
-        setShowResult(true);
-      }
-    }, 800);
+  };
+
+  const handleNext = () => {
+    if (currentQuestion < scenarioTest.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+      return;
+    }
+    setShowResult(true);
   };
   
   const handleComplete = () => {
@@ -123,9 +124,19 @@ export function ScenarioTest() {
               onClick={() => handleAnswer(1)}
             >
               <span className="text-3xl">✅</span>
-              <span>Легальное предложение</span>
+              <span>Более прозрачное предложение</span>
             </button>
           </div>
+          {answers.length > currentQuestion && (
+            <div className="mt-6">
+              <p className="mb-3">
+                {answers[currentQuestion].isCorrect
+                  ? 'Верно. Смотри не только на «страшные» слова, но и на ложные срабатывания: риск сам по себе не равен обману.'
+                  : 'Ошибка. Спроси, есть ли механизм дохода, документы и независимая проверка. Добросовестное предложение тоже может быть сложным.'}
+              </p>
+              <button type="button" className="btn btn-primary" onClick={handleNext}>Далее</button>
+            </div>
+          )}
         </div>
       </div>
     </div>

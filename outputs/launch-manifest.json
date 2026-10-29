@@ -1,0 +1,17 @@
+{
+  "durationMs": 40000,
+  "width": 1920,
+  "height": 1080,
+  "captions": "video/captions/launch.ru.vtt",
+  "frames": {
+    "hook": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-hook.png",
+    "reveal": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-reveal.png",
+    "detect": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-detect.png",
+    "scan": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-scan.png",
+    "verify": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-verify.png",
+    "decide": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-decide.png",
+    "badge": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-badge.png",
+    "montage": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-montage.png",
+    "payoff": "/Users/stas/Workspace/gold_detector/buratino-premium/outputs/frame-payoff.png"
+  }
+}
