@@ -3,6 +3,8 @@
  * Собирает все действия пользователя во время игровой сессии
  */
 
+import { syncSessionToSupabase } from './syncToSupabase';
+
 export interface SessionData {
   sessionId: string;
   startTime: string;
@@ -257,14 +259,32 @@ class SessionAnalytics {
     
     this.saveSession();
     
-    // Копируем данные перед архивацией (т.к. архивация очищает currentSession)
-    const sessionToSend = { ...this.currentSession };
-    
-    // Сохраняем в архив всех сессий
+    const sessionToSend: SessionData = JSON.parse(JSON.stringify(this.currentSession));
     this.archiveSession();
-    
-    // Отправляем данные на бэкенд
-    void this.sendToServer(sessionToSend);
+    void this.flushFinalSync(sessionToSend);
+  }
+
+  /**
+   * Ждёт текущую отправку и потом шлёт финальный снимок,
+   * чтобы более старый sync не перезаписал завершённую сессию.
+   */
+  private async flushFinalSync(sessionData: SessionData) {
+    if (this.syncTimer) {
+      clearTimeout(this.syncTimer);
+      this.syncTimer = null;
+    }
+
+    while (this.isSyncInFlight) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    this.isSyncInFlight = true;
+    try {
+      await this.sendToServer(sessionData);
+    } finally {
+      this.isSyncInFlight = false;
+      this.syncQueuedWhileSending = false;
+    }
   }
   
   /**
@@ -334,16 +354,23 @@ class SessionAnalytics {
   }
   
   /**
-   * Отправляет сессию на бэкенд для сохранения в БД
+   * Отправляет сессию в Supabase и, если настроен, на отдельный backend.
    */
   private async sendToServer(sessionData: SessionData) {
-    // Проверяем наличие API URL и ключа
+    const supabaseResult = await syncSessionToSupabase(sessionData);
+    if (supabaseResult.ok) {
+      console.log(`✅ Сессия отправлена в Supabase: ${sessionData.sessionId}`);
+    } else if (supabaseResult.reason === 'error') {
+      console.error('❌ Ошибка отправки в Supabase:', supabaseResult.message);
+    }
+
     const apiUrl = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
-    
+
     if (!apiUrl || !apiKey) {
-      console.warn('⚠️  API URL или API KEY не настроены. Данные не будут отправлены на сервер.');
-      console.warn('Добавьте VITE_API_URL и VITE_API_KEY в .env файл.');
+      if (!supabaseResult.ok && supabaseResult.reason === 'not_configured') {
+        console.warn('⚠️  Supabase и backend API не настроены. Данные остаются в localStorage.');
+      }
       return;
     }
     
@@ -369,7 +396,6 @@ class SessionAnalytics {
     } catch (error) {
       console.error('❌ Ошибка отправки данных на сервер:', error);
       console.error('Данные сохранены локально в localStorage.');
-      // Не бросаем ошибку - игра продолжает работать даже если сервер недоступен
     }
   }
   
