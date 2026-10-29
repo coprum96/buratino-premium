@@ -19,5 +19,32 @@ describe('LossCalculator', () => {
     expect(screen.getByText('Сумма должна быть больше нуля.')).toBeInTheDocument();
     expect(screen.getByText('Срок — от 1 до 60 месяцев.')).toBeInTheDocument();
     expect(onValidityChange).toHaveBeenLastCalledWith(false);
+    expect(screen.getByLabelText('Сумма, ₽')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Сумма, ₽')).toHaveAttribute('aria-describedby', expect.stringContaining('calc-amount-error'));
+  });
+
+  it('rejects empty, pasted and non-numeric values', async () => {
+    const user = userEvent.setup();
+    const onValidityChange = vi.fn();
+    render(<LossCalculator onValidityChange={onValidityChange} />);
+
+    const amount = screen.getByLabelText('Сумма, ₽');
+    const months = screen.getByLabelText('Срок, месяцы');
+
+    await user.clear(amount);
+    expect(onValidityChange).toHaveBeenLastCalledWith(false);
+    expect(amount).toHaveAttribute('aria-invalid', 'true');
+
+    await user.click(amount);
+    await user.paste('abc');
+    expect(screen.getByText('Введи сумму числом больше нуля.')).toBeInTheDocument();
+
+    await user.clear(amount);
+    await user.paste('-1000');
+    await user.clear(months);
+    await user.paste('1.5');
+    expect(screen.getByText('Сумма должна быть больше нуля.')).toBeInTheDocument();
+    expect(screen.getByText('Срок должен быть целым числом.')).toBeInTheDocument();
+    expect(onValidityChange).toHaveBeenLastCalledWith(false);
   });
 });

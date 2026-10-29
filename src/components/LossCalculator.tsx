@@ -63,7 +63,7 @@ export function LossCalculator({ scenario, onValidityChange }: LossCalculatorPro
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             aria-invalid={Boolean(validation.errors.amount)}
-            aria-describedby="calc-amount-hint calc-amount-error"
+            aria-describedby={validation.errors.amount ? 'calc-amount-hint calc-amount-error' : 'calc-amount-hint'}
             className="w-full min-h-11 px-4 rounded-xl bg-white/10 border-2 border-white/30"
           />
           <p id="calc-amount-hint" className="text-sm mt-1 text-white/70">
@@ -80,7 +80,7 @@ export function LossCalculator({ scenario, onValidityChange }: LossCalculatorPro
             value={months}
             onChange={(e) => setMonths(e.target.value)}
             aria-invalid={Boolean(validation.errors.months)}
-            aria-describedby="calc-months-hint calc-months-error"
+            aria-describedby={validation.errors.months ? 'calc-months-hint calc-months-error' : 'calc-months-hint'}
             className="w-full min-h-11 px-4 rounded-xl bg-white/10 border-2 border-white/30"
           />
           <p id="calc-months-hint" className="text-sm mt-1 text-white/70">

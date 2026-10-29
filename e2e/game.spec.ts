@@ -11,9 +11,10 @@ async function startGame(page: Page) {
 
 async function revealText(page: Page) {
   const skip = page.getByRole('button', { name: 'Показать весь текст' });
-  if (await skip.isVisible()) {
-    await skip.click();
+  if (await skip.isVisible() && await skip.isEnabled()) {
+    await skip.click({ timeout: 1500 }).catch(() => undefined);
   }
+  await expect(page.getByText('Что ты сделаешь?')).toBeVisible();
 }
 
 test('restores progress after reload in the middle of a chapter', async ({ page }) => {
@@ -21,7 +22,7 @@ test('restores progress after reload in the middle of a chapter', async ({ page 
   await page.getByRole('button', { name: 'Начать главу' }).first().click();
   await expect(page.getByRole('heading', { name: 'Пять золотых монет' })).toBeVisible();
   await revealText(page);
-  await page.getByRole('button', { name: /Да! Я готов учиться/ }).click();
+  await page.getByRole('button', { name: /Выяснить, как их не отдать/ }).click();
   await page.getByRole('button', { name: 'Далее' }).click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Сверчок Джимини' })).toBeVisible();
@@ -31,9 +32,13 @@ test('wrong story choice shows feedback before continuing', async ({ page }) => 
   await startGame(page);
   await page.getByRole('button', { name: 'Начать главу' }).first().click();
   await revealText(page);
-  await page.getByRole('button', { name: /Может, сначала потрачу/ }).click();
+  await page.getByRole('button', { name: /Потратить одну монету сразу/ }).click();
+  await expect(page.getByRole('heading', { name: 'Что произошло' })).toBeVisible();
+  await expect(page.getByText(/слабее защищает деньги|Этот выбор/).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Что это значит' })).toBeVisible();
-  await expect(page.getByText(/слабее защищает деньги|Этот выбор/)).toBeVisible();
+  await expect(page.getByText(/Пока не доказывает/)).toBeVisible();
+  await expect(page.getByText('Репутация: -3')).toHaveCount(0);
+  await expect(page.getByText(/плохое решение/)).toHaveCount(0);
 });
 
 test('map never shows more than 8 completed chapters', async ({ page }) => {
@@ -74,12 +79,16 @@ test('calculator rejects negative values and explains a loan', async ({ page }) 
   await page.getByLabel('Срок, месяцы').fill('-3');
   await expect(page.getByText('Сумма должна быть больше нуля.')).toBeVisible();
   await expect(page.getByText(/Срок — от 1 до 60/)).toBeVisible();
-  await expect(page.getByRole('button', { name: /Теперь всё ясно/ })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /Посчитать условия и идти дальше/ })).toBeDisabled();
+  await page.getByLabel('Сумма, ₽').fill('');
+  await page.getByLabel('Сумма, ₽').fill('не число');
+  await expect(page.getByText('Введи сумму числом больше нуля.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Посчитать условия и идти дальше/ })).toBeDisabled();
   await page.getByLabel('Сумма, ₽').fill('10000');
   await page.getByLabel('Срок, месяцы').fill('12');
   await expect(page.getByText('Сумма долга', { exact: true })).toBeVisible();
   await expect(page.getByText('Переплата', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Теперь всё ясно/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Посчитать условия и идти дальше/ })).toBeEnabled();
 });
 
 test('map keeps later chapters locked until the first unfinished one is done', async ({ page }) => {
@@ -115,6 +124,63 @@ test('map keeps later chapters locked until the first unfinished one is done', a
   await expect(chapter5.getByRole('button', { name: 'Начать главу' })).toBeVisible();
   await expect(chapter6.getByRole('button')).toHaveCount(0);
   await expect(chapter6.getByText('Сначала заверши предыдущую главу.')).toBeVisible();
+});
+
+test('four finished chapters restore clues and continue the chapter 5 quiz', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.setItem('gold-detector-save', JSON.stringify({
+      state: {
+        schemaVersion: 2,
+        coins: 4,
+        wisdom: 35,
+        currentLevel: 4,
+        currentDialogue: 3,
+        completedChapters: [0, 1, 2, 3],
+        completedActivities: ['ch0-story', 'ch0-quiz', 'ch1-story', 'ch1-quiz', 'ch2-story', 'ch2-quiz', 'ch3-story', 'ch3-quiz', 'ch4-story'],
+        accessStatus: 'promo',
+        phase: 'quiz',
+        hasSeenOnboarding: true,
+        participantId: 'p_test',
+        chapterQuizScores: {},
+        postTestScore: 0,
+        storyChoices: [],
+        finaleDecision: null,
+        achievementUnlocks: {
+          'first-red-flag': '2024-01-01',
+          'cool-head': '2024-01-01',
+          'check-facts': '2024-01-01',
+          'fine-print': '2024-01-01',
+        },
+        achievements: ['first-red-flag', 'cool-head', 'check-facts', 'fine-print'],
+        pendingLevel: null,
+      },
+      version: 2,
+    }));
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Проверка главы' })).toBeVisible();
+  await page.getByRole('button', { name: 'На карту' }).click();
+  const chapter5 = page.locator('article').filter({ hasText: 'Глава 5' });
+  await expect(chapter5.getByRole('button', { name: 'Продолжить главу' })).toBeVisible();
+  await page.getByRole('button', { name: 'Открыть дело Карабаса' }).click();
+  await expect(page.getByText('0 из 14 узлов')).toHaveCount(0);
+  await expect(page.getByText(/из 14 узлов/)).toBeVisible();
+});
+
+test('corrupt save offers a migration choice and does not wipe the backup', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.setItem('gold-detector-save', '{not-json');
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Игра обновилась' })).toBeVisible();
+  const backup = await page.evaluate(() => localStorage.getItem('gold-detector-save-backup'));
+  expect(backup).toBe('{not-json');
+  await page.getByRole('button', { name: 'Начать новое расследование' }).click();
+  await expect(page.getByRole('heading', { name: 'Золотой Детектор' })).toBeVisible();
+  const kept = await page.evaluate(() => localStorage.getItem('gold-detector-save-backup'));
+  expect(kept).toBe('{not-json');
 });
 
 test('loss ending does not claim coins are safe', async ({ page }) => {
@@ -171,7 +237,9 @@ test('case board opens from the map and stays empty until a clue is found', asyn
   await page.getByRole('button', { name: 'Открыть дело Карабаса' }).click();
   await expect(page.getByRole('heading', { name: 'Дело Карабаса' })).toBeVisible();
   await expect(page.getByText('0 из 14 узлов')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Персонажи' })).toBeVisible();
   await expect(page.getByText('Неизвестный узел').first()).toBeVisible();
+  await expect(page.getByText('Карабас Барабас')).toHaveCount(0);
 });
 
 test('keyboard-only can open the handbook', async ({ page }) => {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FaBook, FaCheckCircle, FaCrown, FaLock, FaRedo, FaStar } from 'react-icons/fa';
 import { CHAPTER_META, TOTAL_GAME_DURATION_MIN } from '../data/learningStages';
 import { levels } from '../data/gameData';
-import { canOpenChapter, completedChapterCount, currentChapterFromProgress } from '../lib/progress';
+import { canOpenChapter, completedChapterCount, currentChapterFromProgress, isChapterInProgress } from '../lib/progress';
 import { TOTAL_CHAPTERS } from '../lib/versions';
 import { useGameStore } from '../store/gameStore';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -19,6 +19,10 @@ export function ChapterMap() {
     resetGame,
     accessStatus,
     chapterStarted,
+    currentLevel,
+    currentDialogue,
+    phase,
+    completedActivities,
   } = useGameStore();
   const [confirmReset, setConfirmReset] = useState(false);
   const completed = completedChapterCount(completedChapters);
@@ -65,6 +69,14 @@ export function ChapterMap() {
             const isCompleted = completedChapters.includes(level.id);
             const isAvailable = canOpenChapter(index, completedChapters);
             const isCurrent = index === currentChapter && !isCompleted;
+            const inProgress = isChapterInProgress(index, {
+              completedChapters,
+              chapterStarted,
+              currentLevel,
+              currentDialogue,
+              phase,
+              completedActivities,
+            });
             const isPremium = index > 2;
             const hasAccess = checkLevelAccess(index);
 
@@ -98,7 +110,7 @@ export function ChapterMap() {
                     className="btn btn-primary w-full"
                     onClick={() => handleChapterClick(index)}
                   >
-                    {isCompleted ? 'Пройти ещё раз' : chapterStarted.includes(index) ? 'Продолжить главу' : 'Начать главу'}
+                    {isCompleted ? 'Пройти ещё раз' : inProgress ? 'Продолжить главу' : 'Начать главу'}
                   </button>
                 )}
 

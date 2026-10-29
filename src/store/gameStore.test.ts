@@ -123,6 +123,73 @@ describe('game store progress', () => {
     expect(useGameStore.getState().evidenceFound).toEqual(['karabas']);
   });
 
+  it('resumes an unfinished quiz instead of restarting the chapter story', () => {
+    useGameStore.setState({
+      currentLevel: 4,
+      currentDialogue: 3,
+      completedChapters: [0, 1, 2, 3],
+      completedActivities: ['ch4-story'],
+      chapterStarted: [],
+      phase: 'quiz',
+    });
+    useGameStore.getState().enterChapter(4);
+
+    expect(useGameStore.getState().phase).toBe('quiz');
+    expect(useGameStore.getState().currentDialogue).toBe(0);
+    expect(useGameStore.getState().isReplayingChapter).toBe(false);
+    expect(useGameStore.getState().chapterStarted).toContain(4);
+  });
+
+  it('restores guaranteed evidence from a four-chapter v2 save without awarding extras', async () => {
+    localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify({
+      state: {
+        schemaVersion: 2,
+        coins: 4,
+        wisdom: 35,
+        currentLevel: 4,
+        currentDialogue: 3,
+        completedChapters: [0, 1, 2, 3],
+        completedActivities: ['ch4-story'],
+        accessStatus: 'promo',
+        phase: 'quiz',
+        hasSeenOnboarding: true,
+        achievementUnlocks: {
+          'first-red-flag': '2024-01-01',
+          'cool-head': '2024-01-01',
+          'check-facts': '2024-01-01',
+          'fine-print': '2024-01-01',
+        },
+      },
+      version: 2,
+    }));
+    await useGameStore.persist.rehydrate();
+
+    const state = useGameStore.getState();
+    expect(state.phase).toBe('quiz');
+    expect(state.currentLevel).toBe(4);
+    expect(state.saveVersion).toBe(5);
+    expect(state.wisdom).toBe(35);
+    expect(state.coins).toBe(4);
+    expect(state.chapterStarted).toContain(4);
+    expect(state.evidenceFound).toEqual(expect.arrayContaining(['karabas', 'hidden-fee', 'contract']));
+    expect(state.evidenceFound).not.toContain('lockup-clause');
+    expect(state.pendingAchievementQueue).toEqual([]);
+    expect(state.achievementUnlocks['trail-finder']).toBeTruthy();
+    useGameStore.getState().completeChapter(4);
+    expect(useGameStore.getState().pendingAchievementQueue).toEqual([]);
+  });
+
+  it('keeps a broken save and asks the player how to continue', async () => {
+    localStorage.setItem(SAVE_STORAGE_KEY, '{not-json');
+    await useGameStore.persist.rehydrate();
+    expect(useGameStore.getState().needsMigrationDecision).toBe(true);
+    expect(localStorage.getItem('gold-detector-save-backup')).toBe('{not-json');
+    useGameStore.getState().startNewInvestigation();
+    expect(useGameStore.getState().needsMigrationDecision).toBe(false);
+    expect(useGameStore.getState().completedChapters).toEqual([]);
+    expect(localStorage.getItem('gold-detector-save-backup')).toBe('{not-json');
+  });
+
   it('resets progress only through resetGame', () => {
     useGameStore.getState().completeQuiz(0, 1, 1);
     useGameStore.getState().resetGame();

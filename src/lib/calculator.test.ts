@@ -24,6 +24,10 @@ describe('validateCalculatorInput', () => {
     expect(validateCalculatorInput('-100', '-2').ok).toBe(false);
     expect(validateCalculatorInput('-100', '-2').errors.amount).toMatch(/больше нуля/);
     expect(validateCalculatorInput('-100', '-2').errors.months).toMatch(/от 1 до 60/);
+    expect(validateCalculatorInput('   ', '12').ok).toBe(false);
+    expect(validateCalculatorInput('10 000', '12').ok).toBe(true);
+    expect(validateCalculatorInput('10 000', '12').amount).toBe(10000);
+    expect(validateCalculatorInput('10000', ' 12 ').ok).toBe(true);
   });
 
   it('accepts a valid amount and whole months', () => {

@@ -115,6 +115,11 @@
     outline: 3px solid var(--color-focus);
   }
 
+  .choice-card:active:not(:disabled) {
+    @apply bg-white/25;
+    transform: scale(0.99);
+  }
+
   .choice-card[data-state='selected'] {
     @apply border-secondary bg-secondary/20;
   }

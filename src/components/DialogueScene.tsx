@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CHAPTER_META } from '../data/learningStages';
 import { characters, levels, type Choice, type RedFlagDetail } from '../data/gameData';
+import type { AppliedAftermath } from '../lib/choiceAftermath';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
-import { describeScoreEvent } from '../lib/scoring';
 import { useGameStore } from '../store/gameStore';
 import { sessionAnalytics } from '../utils/sessionAnalytics';
+import { ChoiceAftermath } from './ChoiceAftermath';
 import { LieDetector } from './LieDetector';
 import { LossCalculator } from './LossCalculator';
 import { MatchGame } from './MatchGame';
@@ -28,7 +29,6 @@ export function DialogueScene() {
     recordStoryChoice,
     storyChoices,
     finaleDecision,
-    lastScoreEvent,
     isReplayingChapter,
     collectEvidence,
     setStoryFlags,
@@ -45,7 +45,13 @@ export function DialogueScene() {
   const [showTimer, setShowTimer] = useState(true);
   const [timerCompleted, setTimerCompleted] = useState(false);
   const [pendingChoice, setPendingChoice] = useState<Choice | null>(null);
-  const [calculatorReady, setCalculatorReady] = useState(true);
+  const [appliedAftermath, setAppliedAftermath] = useState<AppliedAftermath>({
+    coinsDelta: 0,
+    reputationDelta: 0,
+    overflowDelta: 0,
+    newEvidenceIds: [],
+  });
+  const [calculatorReady, setCalculatorReady] = useState(false);
   const [siteCompareReady, setSiteCompareReady] = useState(false);
   const handleCalculatorValidity = useCallback((ok: boolean) => {
     setCalculatorReady(ok);
@@ -78,7 +84,7 @@ export function DialogueScene() {
   useEffect(() => {
     if (!dialogue) return;
     setPendingChoice(null);
-    setCalculatorReady(true);
+    setCalculatorReady(!dialogue.calculator);
     setSiteCompareReady(false);
     setShowTimer(true);
     setTimerCompleted(false);
@@ -110,6 +116,7 @@ export function DialogueScene() {
   }
 
   const goNext = (choice: Choice) => {
+    if (dialogue.calculator && !calculatorReady) return;
     if (choice.nextLevel) {
       completeStory(currentLevel);
       setPhase('quiz');
@@ -141,6 +148,8 @@ export function DialogueScene() {
 
   const handleChoice = (choice: Choice) => {
     if (pendingChoice) return;
+    if (dialogue.calculator && !calculatorReady) return;
+    if (dialogue.siteCompare && !siteCompareReady) return;
     sessionAnalytics.trackDialogueChoice(
       currentLevel,
       currentDialogue,
@@ -158,10 +167,19 @@ export function DialogueScene() {
       wisdomChange: choice.wisdom || 0,
       coinChange: choice.coins || 0,
     });
+    const before = useGameStore.getState();
+    const knownEvidence = new Set(before.evidenceFound);
     if (choice.wisdom) addWisdom(choice.wisdom, choice.feedback || choice.text);
     if (choice.coins) addCoins(choice.coins, choice.feedback || choice.text);
     if (choice.evidence) collectEvidence(choice.evidence);
     if (choice.flags) setStoryFlags(choice.flags);
+    const after = useGameStore.getState();
+    setAppliedAftermath({
+      coinsDelta: after.coins - before.coins,
+      reputationDelta: after.wisdom - before.wisdom,
+      overflowDelta: after.wisdomOverflow - before.wisdomOverflow,
+      newEvidenceIds: (choice.evidence ?? []).filter((id) => after.evidenceFound.includes(id) && !knownEvidence.has(id)),
+    });
     setPendingChoice(choice);
   };
 
@@ -300,6 +318,7 @@ export function DialogueScene() {
 
         {showChoices && !pendingChoice && (
           <div className="space-y-3 motion-stagger">
+            <p className="text-sm font-semibold text-white/85">{dialogue.question || 'Что ты сделаешь?'}</p>
             {dialogue.calculator && !calculatorReady && (
               <p className="text-sm text-white/75">Сначала введи корректные сумму и срок — тогда можно продолжить.</p>
             )}
@@ -308,33 +327,35 @@ export function DialogueScene() {
             )}
             {dialogue.choices.map((choice) => (
               <button
-                key={choice.text}
+                key={choice.id || choice.text}
                 type="button"
                 className="choice-card motion-choice"
                 disabled={Boolean((dialogue.calculator && !calculatorReady) || (dialogue.siteCompare && !siteCompareReady))}
                 onClick={() => handleChoice(choice)}
               >
                 <span aria-hidden="true">{choice.icon}</span>
-                <span>{choice.text}</span>
+                <span className="flex-1 text-left">
+                  <span className="font-semibold block">{choice.text}</span>
+                  {choice.detail && <span className="block text-sm text-white/70 mt-1">{choice.detail}</span>}
+                </span>
               </button>
             ))}
           </div>
         )}
 
         {pendingChoice && (
-          <section className="surface-card mt-4">
-            <h3 className="font-bold mb-2">Что это значит</h3>
-            <p className="mb-3 leading-relaxed">
-              {pendingChoice.feedback
-                || (pendingChoice.wisdom && pendingChoice.wisdom < 0
-                  ? 'Этот выбор слабее защищает деньги. Дальше разберём, какой факт стоит проверить.'
-                  : 'Ты выбрал более осторожный путь. Дальше закрепим, что именно здесь важно.')}
-            </p>
-            {lastScoreEvent && <p className="text-sm mb-4">{describeScoreEvent(lastScoreEvent)}</p>}
-            <button type="button" className="btn btn-primary" onClick={() => goNext(pendingChoice)}>
-              Далее
-            </button>
-          </section>
+          <ChoiceAftermath
+            choice={pendingChoice}
+            characterId={dialogue.character}
+            replay={isReplayingChapter}
+            applied={appliedAftermath}
+            nextDisabled={Boolean(dialogue.calculator && !calculatorReady)}
+            onContinue={() => goNext(pendingChoice)}
+            onOpenBoard={appliedAftermath.newEvidenceIds.length > 0 ? () => {
+              goNext(pendingChoice);
+              setPhase('caseBoard');
+            } : undefined}
+          />
         )}
       </div>
 

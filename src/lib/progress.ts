@@ -37,6 +37,24 @@ export function canOpenChapter(chapterId: number, completedChapters: number[]): 
   return chapterId === nextUnlockedChapter(completedChapters);
 }
 
+export function isChapterInProgress(
+  chapterId: number,
+  input: {
+    completedChapters: number[];
+    chapterStarted: number[];
+    currentLevel: number;
+    currentDialogue: number;
+    phase: string;
+    completedActivities: string[];
+  }
+): boolean {
+  if (input.completedChapters.includes(chapterId)) return false;
+  if (input.chapterStarted.includes(chapterId)) return true;
+  if (input.completedActivities.includes(stageIdFor(chapterId, 'story'))) return true;
+  if (input.currentLevel !== chapterId) return false;
+  return input.phase === 'dialogue' || input.phase === 'quiz' || input.currentDialogue > 0;
+}
+
 export function isChapterLockedByProgress(chapterId: number, completedChapters: number[]): boolean {
   return !canOpenChapter(chapterId, completedChapters);
 }

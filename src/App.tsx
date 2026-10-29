@@ -12,6 +12,7 @@ import { Paywall } from './components/Paywall';
 import { PostTest } from './components/PostTest';
 import { QuizScreen } from './components/QuizScreen';
 import { ScenarioTest } from './components/ScenarioTest';
+import { SaveMigrationScreen } from './components/SaveMigrationScreen';
 import { StartScreen } from './components/StartScreen';
 import { StatsBar } from './components/StatsBar';
 import { setSoundMuted } from './lib/sound';
@@ -28,6 +29,7 @@ function App() {
     showAchievementGallery,
     toggleAchievementGallery,
     achievementUnlocks,
+    needsMigrationDecision,
   } = useGameStore();
   const [showDataPanel, setShowDataPanel] = useState(false);
   const [hydrated, setHydrated] = useState(() => useGameStore.persist.hasHydrated());
@@ -62,6 +64,10 @@ function App() {
 
   if (!hydrated) {
     return <div className="min-h-screen flex items-center justify-center">Восстанавливаем прогресс...</div>;
+  }
+
+  if (needsMigrationDecision) {
+    return <SaveMigrationScreen />;
   }
 
   return (

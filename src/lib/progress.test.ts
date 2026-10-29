@@ -7,6 +7,7 @@ import {
   completedChapterCount,
   completedStageCount,
   currentChapterFromProgress,
+  isChapterInProgress,
   nextUnlockedChapter,
 } from './progress';
 
@@ -39,5 +40,25 @@ describe('progress counters', () => {
     expect(canOpenChapter(4, completed)).toBe(true);
     expect(canOpenChapter(5, completed)).toBe(false);
     expect(canOpenChapter(6, completed)).toBe(false);
+  });
+
+  it('treats an active quiz as in progress even without chapterStarted', () => {
+    const completed = [0, 1, 2, 3];
+    expect(isChapterInProgress(4, {
+      completedChapters: completed,
+      chapterStarted: [],
+      currentLevel: 4,
+      currentDialogue: 0,
+      phase: 'quiz',
+      completedActivities: ['ch4-story'],
+    })).toBe(true);
+    expect(isChapterInProgress(4, {
+      completedChapters: completed,
+      chapterStarted: [],
+      currentLevel: 4,
+      currentDialogue: 0,
+      phase: 'chapterMap',
+      completedActivities: [],
+    })).toBe(false);
   });
 });

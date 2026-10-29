@@ -6,15 +6,27 @@ import { sessionAnalytics } from '../utils/sessionAnalytics';
 import { LiveRegion } from './ui/LiveRegion';
 
 export function QuizScreen() {
-  const { currentLevel, addWisdom, completeQuiz, checkLevelAccess, setPendingLevel, setPhase } = useGameStore();
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [score, setScore] = useState(0);
+  const {
+    currentLevel,
+    addWisdom,
+    completeQuiz,
+    checkLevelAccess,
+    setPendingLevel,
+    setPhase,
+    quizQuestionIndex,
+    quizScore,
+    quizAwardedQuestions,
+    setQuizProgress,
+  } = useGameStore();
   const [showResult, setShowResult] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [status, setStatus] = useState('');
-
   const level = levels[currentLevel];
   const questions = level?.quiz || [];
+  const currentQuestion = questions.length === 0
+    ? 0
+    : Math.min(quizQuestionIndex, questions.length - 1);
+  const score = quizScore;
   const question = questions[currentQuestion];
 
   if (!level || questions.length === 0) {
@@ -35,8 +47,13 @@ export function QuizScreen() {
       isCorrect
     );
     if (isCorrect) {
-      setScore((value) => value + 1);
-      if (question.reward) addWisdom(question.reward, question.explanation || 'Верный ответ в проверке главы');
+      if (!quizAwardedQuestions.includes(currentQuestion)) {
+        setQuizProgress({
+          score: quizScore + 1,
+          awarded: [...quizAwardedQuestions, currentQuestion],
+        });
+        if (question.reward) addWisdom(question.reward, question.explanation || 'Верный ответ в проверке главы');
+      }
       setStatus('Ответ верный. Прочитай объяснение и нажми «Далее».');
     } else {
       setStatus('Ответ неверный. Прочитай объяснение и нажми «Далее».');
@@ -45,7 +62,7 @@ export function QuizScreen() {
 
   const handleNext = () => {
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion((value) => value + 1);
+      setQuizProgress({ questionIndex: currentQuestion + 1 });
       setSelectedAnswer(null);
       setStatus('');
       return;

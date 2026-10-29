@@ -37,14 +37,20 @@ async function seedChapter(page: import('@playwright/test').Page) {
 test('achievement unlocks once, persists, and closes from CTA or Escape', async ({ page }) => {
   await seedChapter(page);
   const skip = page.getByRole('button', { name: 'Показать весь текст' });
-  if (await skip.isVisible()) await skip.click();
+  if (await skip.isVisible() && await skip.isEnabled()) {
+    await skip.click({ timeout: 1500 }).catch(() => undefined);
+  }
+  await expect(page.getByText('Что ты сделаешь?')).toBeVisible();
   await page.getByRole('button', { name: 'Импульсивные траты без плана' }).click();
   await page.getByRole('button', { name: 'Закрыть окно' }).click();
   await page.getByRole('button', { name: 'Отсутствие защиты и обучения' }).click();
   await page.getByRole('button', { name: 'Закрыть окно' }).click();
-  await page.getByRole('button', { name: /Да! Я готов учиться/ }).click();
+  await page.getByRole('button', { name: /Выяснить, как их не отдать/ }).click();
   await page.getByRole('button', { name: 'Далее' }).click();
-  if (await skip.isVisible()) await skip.click();
+  if (await skip.isVisible() && await skip.isEnabled()) {
+    await skip.click({ timeout: 1500 }).catch(() => undefined);
+  }
+  await expect(page.getByText('Что ты сделаешь?')).toBeVisible();
   await page.getByRole('button', { name: 'Игнорирование телесных сигналов' }).click();
   const dialog = page.getByTestId('achievement-unlock');
   await expect(dialog).toBeVisible();

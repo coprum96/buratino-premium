@@ -14,9 +14,11 @@ import {
   type ScoreEvent,
   type StoryChoiceRecord,
 } from '../lib/scoring';
+import { readSaveBackup } from '../lib/saveMigration';
 import {
   createDefaultPersistedState,
   createParticipantId,
+  gamePersistStorage,
   migrateSave,
   type PersistedGameState,
 } from '../lib/storage';
@@ -70,6 +72,9 @@ interface GameState extends PersistedGameState {
   collectEvidence: (ids: string[]) => void;
   setStoryFlags: (flags: string[]) => void;
   toggleSoundMuted: () => void;
+  setQuizProgress: (progress: { questionIndex?: number; score?: number; awarded?: number[] }) => void;
+  acceptMigratedProgress: () => void;
+  startNewInvestigation: () => void;
 }
 
 const UI_DEFAULTS = {
@@ -151,20 +156,42 @@ export const useGameStore = create<GameState>()(
         currentDialogue: 0,
         phase: 'chapterMap',
         isReplayingChapter: false,
+        quizQuestionIndex: 0,
+        quizScore: 0,
+        quizAwardedQuestions: [],
       })),
 
       setCurrentDialogue: (index) => set({ currentDialogue: index }),
 
+      setQuizProgress: (progress) => set((state) => ({
+        quizQuestionIndex: progress.questionIndex ?? state.quizQuestionIndex,
+        quizScore: progress.score ?? state.quizScore,
+        quizAwardedQuestions: progress.awarded ?? state.quizAwardedQuestions,
+      })),
+
       enterChapter: (levelId) => set((state) => {
         const replaying = state.completedChapters.includes(levelId);
-        const resuming = !replaying && state.currentLevel === levelId && state.chapterStarted.includes(levelId);
+        const storyDone = !replaying && state.completedActivities.includes(stageIdFor(levelId, 'story'));
+        const resuming = !replaying && (
+          state.chapterStarted.includes(levelId)
+          || (state.currentLevel === levelId && (
+            state.phase === 'dialogue'
+            || state.phase === 'quiz'
+            || state.currentDialogue > 0
+            || storyDone
+          ))
+        );
+        const sameQuiz = storyDone && state.currentLevel === levelId;
         return {
           currentLevel: levelId,
-          currentDialogue: resuming ? state.currentDialogue : 0,
-          phase: 'dialogue',
+          currentDialogue: resuming && !storyDone ? state.currentDialogue : 0,
+          phase: storyDone ? 'quiz' : 'dialogue',
           isReplayingChapter: replaying,
           lastScoreEvent: null,
           chapterStarted: uniqueSortedNumbers([...state.chapterStarted, levelId]),
+          quizQuestionIndex: sameQuiz ? state.quizQuestionIndex : 0,
+          quizScore: sameQuiz ? state.quizScore : 0,
+          quizAwardedQuestions: sameQuiz ? state.quizAwardedQuestions : [],
         };
       }),
 
@@ -280,6 +307,29 @@ export const useGameStore = create<GameState>()(
         });
       },
 
+      acceptMigratedProgress: () => {
+        const backup = readSaveBackup();
+        if (backup) {
+          try {
+            const migrated = migrateSave(JSON.parse(backup));
+            set({
+              ...migrated,
+              ...UI_DEFAULTS,
+              needsMigrationDecision: false,
+              isReplayingChapter: migrated.isReplayingChapter,
+            });
+            return;
+          } catch {
+            // Backup is unreadable; keep the already hydrated shell and let the player continue.
+          }
+        }
+        set({ needsMigrationDecision: false });
+      },
+
+      startNewInvestigation: () => {
+        get().resetGame();
+      },
+
       setAccessStatus: (status) => set({ accessStatus: status }),
 
       setPendingLevel: (level) => set({ pendingLevel: level }),
@@ -372,7 +422,7 @@ export const useGameStore = create<GameState>()(
     {
       name: SAVE_STORAGE_KEY,
       version: SAVE_SCHEMA_VERSION,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => gamePersistStorage),
       migrate: (persisted) => migrateSave(persisted),
       merge: (persisted, current) => ({
         ...current,
@@ -380,6 +430,7 @@ export const useGameStore = create<GameState>()(
       }),
       partialize: (state) => ({
         schemaVersion: state.schemaVersion,
+        saveVersion: state.saveVersion,
         gameVersion: state.gameVersion,
         scenarioVersion: state.scenarioVersion,
         itemBankVersion: state.itemBankVersion,
@@ -410,6 +461,11 @@ export const useGameStore = create<GameState>()(
         storyFlags: state.storyFlags,
         chapterStarted: state.chapterStarted,
         soundMuted: state.soundMuted,
+        isReplayingChapter: state.isReplayingChapter,
+        quizQuestionIndex: state.quizQuestionIndex,
+        quizScore: state.quizScore,
+        quizAwardedQuestions: state.quizAwardedQuestions,
+        needsMigrationDecision: state.needsMigrationDecision,
       }),
     }
   )

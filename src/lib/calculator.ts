@@ -102,10 +102,14 @@ export const CALCULATOR_SCENARIOS: CalculatorScenario[] = [
   },
 ];
 
+function normalizeCalculatorNumber(raw: string): string {
+  return raw.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+}
+
 export function validateCalculatorInput(amountRaw: string, monthsRaw: string): CalculatorValidation {
   const errors: CalculatorFieldErrors = {};
-  const amount = Number(amountRaw.replace(',', '.').trim());
-  const months = Number(monthsRaw.trim());
+  const amount = Number(normalizeCalculatorNumber(amountRaw));
+  const months = Number(normalizeCalculatorNumber(monthsRaw));
 
   if (amountRaw.trim() === '' || Number.isNaN(amount) || !Number.isFinite(amount)) {
     errors.amount = 'Введи сумму числом больше нуля.';

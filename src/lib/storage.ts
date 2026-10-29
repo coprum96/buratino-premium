@@ -1,7 +1,9 @@
 import type { AccessStatus } from '../utils/accessControl';
 import type { GamePhase } from '../store/gameTypes';
+import { evaluateAchievements, mergeUnlocks } from './achievements';
 import type { FinaleDecision, ScoreEvent, StoryChoiceRecord } from './scoring';
 import { addCompletedActivity, addCompletedChapter, canOpenChapter, nextUnlockedChapter, uniqueIds, uniqueSortedNumbers } from './progress';
+import { inferChapterStarted, preserveSaveBackup, restoreStoryEvidence } from './saveMigration';
 import {
   GAME_VERSION,
   ITEM_BANK_VERSION,
@@ -13,6 +15,7 @@ import {
 
 export interface PersistedGameState {
   schemaVersion: number;
+  saveVersion: number;
   gameVersion: string;
   scenarioVersion: string;
   itemBankVersion: string;
@@ -43,6 +46,11 @@ export interface PersistedGameState {
   storyFlags: string[];
   chapterStarted: number[];
   soundMuted: boolean;
+  isReplayingChapter: boolean;
+  quizQuestionIndex: number;
+  quizScore: number;
+  quizAwardedQuestions: number[];
+  needsMigrationDecision: boolean;
 }
 
 export function createParticipantId(): string {
@@ -55,6 +63,7 @@ export function createParticipantId(): string {
 export function createDefaultPersistedState(): PersistedGameState {
   return {
     schemaVersion: SAVE_SCHEMA_VERSION,
+    saveVersion: SAVE_SCHEMA_VERSION,
     gameVersion: GAME_VERSION,
     scenarioVersion: SCENARIO_VERSION,
     itemBankVersion: ITEM_BANK_VERSION,
@@ -85,6 +94,11 @@ export function createDefaultPersistedState(): PersistedGameState {
     storyFlags: [],
     chapterStarted: [],
     soundMuted: false,
+    isReplayingChapter: false,
+    quizQuestionIndex: 0,
+    quizScore: 0,
+    quizAwardedQuestions: [],
+    needsMigrationDecision: false,
   };
 }
 
@@ -150,7 +164,6 @@ export function migrateSave(raw: unknown): PersistedGameState {
   const finaleDecision = persisted.finaleDecision;
   const achievements = asStringArray(persisted.achievements);
   const achievementUnlocks = asStringRecord(persisted.achievementUnlocks, achievements);
-  const mergedAchievements = Array.from(new Set([...achievements, ...Object.keys(achievementUnlocks)]));
   const rawLevel = typeof persisted.currentLevel === 'number' ? persisted.currentLevel : base.currentLevel;
   const currentLevel = repairCurrentLevel(rawLevel, completedChapters);
   const jumpedAhead = rawLevel !== currentLevel;
@@ -158,6 +171,40 @@ export function migrateSave(raw: unknown): PersistedGameState {
   const phase = jumpedAhead && (rawPhase === 'dialogue' || rawPhase === 'quiz')
     ? 'chapterMap'
     : rawPhase;
+  const currentDialogue = jumpedAhead
+    ? 0
+    : typeof persisted.currentDialogue === 'number' ? persisted.currentDialogue : base.currentDialogue;
+  const storyChoices = Array.isArray(persisted.storyChoices)
+    ? persisted.storyChoices as PersistedGameState['storyChoices']
+    : [];
+  const evidenceFound = restoreStoryEvidence(
+    uniqueIds(asStringArray(persisted.evidenceFound)),
+    completedChapters,
+    storyChoices
+  );
+  const chapterStarted = inferChapterStarted({
+    existing: asNumberArray(persisted.chapterStarted),
+    completedChapters,
+    currentLevel,
+    currentDialogue,
+    phase,
+    completedActivities,
+  });
+  const quizQuestionIndex = asCount(persisted.quizQuestionIndex);
+  const isReplayingChapter = Boolean(persisted.isReplayingChapter)
+    || (completedChapters.includes(currentLevel) && (phase === 'dialogue' || phase === 'quiz'));
+  const silentUnlockIds = evaluateAchievements({
+    redFlagOpens: asCount(persisted.redFlagOpens),
+    finePrintOpens: asCount(persisted.finePrintOpens),
+    legitimateCorrect: asCount(persisted.legitimateCorrect),
+    calibratedCorrect: asCount(persisted.calibratedCorrect),
+    postTestScore: typeof persisted.postTestScore === 'number' ? persisted.postTestScore : 0,
+    completedChapters,
+    storyChoices,
+    evidenceFound,
+  }, Object.keys(achievementUnlocks));
+  const migratedUnlocks = mergeUnlocks(achievementUnlocks, silentUnlockIds);
+  const mergedAchievements = Array.from(new Set([...achievements, ...Object.keys(migratedUnlocks)]));
 
   return {
     ...base,
@@ -165,21 +212,19 @@ export function migrateSave(raw: unknown): PersistedGameState {
     wisdom: typeof persisted.wisdom === 'number' ? persisted.wisdom : base.wisdom,
     wisdomOverflow: typeof persisted.wisdomOverflow === 'number' ? persisted.wisdomOverflow : 0,
     currentLevel,
-    currentDialogue: jumpedAhead
-      ? 0
-      : typeof persisted.currentDialogue === 'number' ? persisted.currentDialogue : base.currentDialogue,
+    currentDialogue,
     completedChapters,
     completedActivities,
     chapterQuizScores: persisted.chapterQuizScores && typeof persisted.chapterQuizScores === 'object'
       ? persisted.chapterQuizScores as Record<number, number>
       : {},
     postTestScore: typeof persisted.postTestScore === 'number' ? persisted.postTestScore : 0,
-    storyChoices: Array.isArray(persisted.storyChoices) ? persisted.storyChoices as PersistedGameState['storyChoices'] : [],
+    storyChoices,
     finaleDecision: finaleDecision === 'safe' || finaleDecision === 'pause' || finaleDecision === 'loss'
       ? finaleDecision
       : null,
     achievements: mergedAchievements,
-    achievementUnlocks,
+    achievementUnlocks: migratedUnlocks,
     redFlagOpens: asCount(persisted.redFlagOpens),
     finePrintOpens: asCount(persisted.finePrintOpens),
     legitimateCorrect: asCount(persisted.legitimateCorrect),
@@ -192,11 +237,17 @@ export function migrateSave(raw: unknown): PersistedGameState {
     hasSeenOnboarding: Boolean(persisted.hasSeenOnboarding),
     participantId: typeof persisted.participantId === 'string' ? persisted.participantId : base.participantId,
     lastScoreEvent: null,
-    evidenceFound: uniqueIds(asStringArray(persisted.evidenceFound)),
+    evidenceFound,
     storyFlags: uniqueIds(asStringArray(persisted.storyFlags)),
-    chapterStarted: uniqueSortedNumbers(asNumberArray(persisted.chapterStarted)),
+    chapterStarted,
     soundMuted: Boolean(persisted.soundMuted),
+    isReplayingChapter,
+    quizQuestionIndex,
+    quizScore: asCount(persisted.quizScore),
+    quizAwardedQuestions: uniqueSortedNumbers(asNumberArray(persisted.quizAwardedQuestions)),
+    needsMigrationDecision: Boolean(persisted.needsMigrationDecision),
     schemaVersion: SAVE_SCHEMA_VERSION,
+    saveVersion: SAVE_SCHEMA_VERSION,
     gameVersion: GAME_VERSION,
     scenarioVersion: SCENARIO_VERSION,
     itemBankVersion: ITEM_BANK_VERSION,
@@ -210,9 +261,42 @@ export function readSavedState(): PersistedGameState | null {
   try {
     return migrateSave(JSON.parse(raw));
   } catch {
-    return null;
+    preserveSaveBackup(raw);
+    return {
+      ...createDefaultPersistedState(),
+      needsMigrationDecision: true,
+    };
   }
 }
+
+export const gamePersistStorage = {
+  getItem: (name: string) => {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(name);
+    if (raw === null) return null;
+    try {
+      JSON.parse(raw);
+      return raw;
+    } catch {
+      preserveSaveBackup(raw);
+      return JSON.stringify({
+        state: {
+          ...createDefaultPersistedState(),
+          needsMigrationDecision: true,
+        },
+        version: SAVE_SCHEMA_VERSION,
+      });
+    }
+  },
+  setItem: (name: string, value: string) => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(name, value);
+  },
+  removeItem: (name: string) => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(name);
+  },
+};
 
 export function writeSavedState(state: PersistedGameState): void {
   if (typeof localStorage === 'undefined') return;
