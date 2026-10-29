@@ -1,28 +1,50 @@
 import { useEffect, useState } from 'react';
 import { FaBook, FaLightbulb } from 'react-icons/fa';
+import { EVIDENCE_CATALOG } from '../data/evidence';
 import { getEndingContent } from '../lib/endings';
+import { reputationRank } from '../lib/evidence';
+import { playCue } from '../lib/sound';
 import { useGameStore } from '../store/gameStore';
 import { sessionAnalytics } from '../utils/sessionAnalytics';
 import { EmailForm } from './EmailForm';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 
+const TONE_LABEL = {
+  success: 'Дело закрыто',
+  caution: 'Дело не дособрано',
+  danger: 'Деньги ушли',
+} as const;
+
 export function EndingScreen() {
-  const { coins, wisdom, postTestScore, resetGame, getEndingId, getFinalScore, toggleMaterialsPanel, toggleAchievementGallery, achievementUnlocks } = useGameStore();
+  const {
+    coins,
+    wisdom,
+    postTestScore,
+    resetGame,
+    getEndingId,
+    getFinalScore,
+    toggleMaterialsPanel,
+    toggleAchievementGallery,
+    achievementUnlocks,
+    evidenceFound,
+    setPhase,
+    soundMuted,
+  } = useGameStore();
   const [confirmReset, setConfirmReset] = useState(false);
   const ending = getEndingContent(getEndingId(), coins);
   const finalScore = getFinalScore();
+  const rank = reputationRank(wisdom);
 
   useEffect(() => {
     sessionAnalytics.updateFinalStats(coins, wisdom, Object.keys(achievementUnlocks));
     sessionAnalytics.endSession();
-  }, [achievementUnlocks, coins, wisdom]);
+    if (!soundMuted) playCue('ending');
+  }, [achievementUnlocks, coins, wisdom, soundMuted]);
 
   return (
     <main className="min-h-screen pt-24 pb-10 px-4">
       <div className="surface-card max-w-3xl mx-auto motion-scene">
-        <p className="text-sm uppercase tracking-wide mb-2">
-          {ending.tone === 'success' ? 'Безопасный исход' : ending.tone === 'caution' ? 'Пауза и проверка' : 'Потеря денег'}
-        </p>
+        <p className="text-sm uppercase tracking-wide mb-2">{TONE_LABEL[ending.tone]}</p>
         <h1 className="text-4xl font-bold mb-4">{ending.title}</h1>
         <p className="text-lg leading-relaxed mb-4">{ending.summary}</p>
         <p className="mb-6">{ending.coinsNote}</p>
@@ -33,13 +55,26 @@ export function EndingScreen() {
             <p>Монет сейчас</p>
           </div>
           <div className="bg-white/10 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold">{wisdom}%</p>
-            <p>Мудрость</p>
+            <p className="text-3xl font-bold">{rank}</p>
+            <p>Репутация</p>
           </div>
           <div className="bg-white/10 rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold">{postTestScore}/10</p>
-            <p>Независимая проверка</p>
+            <p className="text-3xl font-bold">{evidenceFound.length}/{EVIDENCE_CATALOG.length}</p>
+            <p>Улик в деле</p>
           </div>
+        </section>
+
+        <section className="mb-8 p-4 rounded-xl bg-white/10">
+          <h2 className="text-2xl font-bold mb-3">Личный отчёт по делу</h2>
+          <ul className="space-y-2">
+            <li><strong>Что получилось:</strong> {ending.report.good}</li>
+            <li><strong>Где почти сдался:</strong> {ending.report.almost}</li>
+            <li><strong>Что упустил:</strong> {ending.report.missed}</li>
+            <li><strong>Поворотный момент:</strong> {ending.report.turningPoint}</li>
+            <li><strong>Что проверить завтра:</strong> {ending.report.checkNext}</li>
+            <li><strong>Навык:</strong> {ending.report.skill}</li>
+          </ul>
+          <p className="text-sm mt-3 text-white/70">Независимая проверка: {postTestScore}/10</p>
         </section>
 
         <section className="mb-8">
@@ -84,6 +119,9 @@ export function EndingScreen() {
         <div className="mt-8 flex flex-wrap gap-3">
           <button type="button" className="btn btn-primary" onClick={() => setConfirmReset(true)}>
             Начать заново
+          </button>
+          <button type="button" className="btn" onClick={() => setPhase('caseBoard')}>
+            Доска дела
           </button>
           <button type="button" className="btn" onClick={toggleAchievementGallery}>
             Достижения

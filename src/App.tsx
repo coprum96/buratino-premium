@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AchievementGallery } from './components/achievements/AchievementGallery';
 import { AchievementUnlock } from './components/achievements/AchievementUnlock';
+import { CaseBoard } from './components/CaseBoard';
 import { ChapterMap } from './components/ChapterMap';
 import { DataExportPanel } from './components/DataExportPanel';
 import { DialogueScene } from './components/DialogueScene';
@@ -13,6 +14,7 @@ import { QuizScreen } from './components/QuizScreen';
 import { ScenarioTest } from './components/ScenarioTest';
 import { StartScreen } from './components/StartScreen';
 import { StatsBar } from './components/StatsBar';
+import { setSoundMuted } from './lib/sound';
 import { useGameStore } from './store/gameStore';
 import type { AccessStatus } from './utils/accessControl';
 
@@ -43,6 +45,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (hydrated) setSoundMuted(useGameStore.getState().soundMuted);
+  }, [hydrated]);
+
+  useEffect(() => {
     if (!canShowDataPanel) return;
     const handleKeyPress = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
@@ -69,6 +75,7 @@ function App() {
         {phase === 'landing' && <StartScreen />}
         {phase === 'onboarding' && <Onboarding />}
         {phase === 'chapterMap' && <ChapterMap />}
+        {phase === 'caseBoard' && <CaseBoard />}
         {phase === 'dialogue' && <DialogueScene />}
         {phase === 'quiz' && <QuizScreen />}
         {phase === 'scenarioTest' && <ScenarioTest />}

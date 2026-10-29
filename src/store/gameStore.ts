@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { stageIdFor } from '../data/learningStages';
 import { resolveEnding, type EndingId } from '../lib/endings';
-import { addCompletedActivity, addCompletedChapter } from '../lib/progress';
+import { addEvidenceId } from '../lib/evidence';
+import { addCompletedActivity, addCompletedChapter, nextUnlockedChapter, uniqueIds, uniqueSortedNumbers } from '../lib/progress';
+import { playCue, setSoundMuted } from '../lib/sound';
 import {
   applyScoreChange,
   calculateFinalScore,
@@ -65,6 +67,9 @@ interface GameState extends PersistedGameState {
   continueFromPaywall: () => void;
   getEndingId: () => EndingId;
   getFinalScore: () => FinalScore;
+  collectEvidence: (ids: string[]) => void;
+  setStoryFlags: (flags: string[]) => void;
+  toggleSoundMuted: () => void;
 }
 
 const UI_DEFAULTS = {
@@ -86,12 +91,14 @@ function syncAchievements(set: (partial: Partial<GameState>) => void, get: () =>
     postTestScore: state.postTestScore,
     completedChapters: state.completedChapters,
     storyChoices: state.storyChoices,
+    evidenceFound: state.evidenceFound,
   }, Object.keys(state.achievementUnlocks));
   if (nextIds.length === 0) return;
   const unlocks = mergeUnlocks(state.achievementUnlocks, nextIds);
   nextIds.forEach((id) => {
     recordResearchEvent(state.participantId, 'achievement_unlock', { itemId: id, completed: true });
   });
+  if (!state.soundMuted) playCue('achievement');
   set({
     achievementUnlocks: unlocks,
     achievements: Object.keys(unlocks),
@@ -113,8 +120,12 @@ export const useGameStore = create<GameState>()(
         set({
           wisdom: next.wisdom,
           coins: next.coins,
+          wisdomOverflow: next.wisdomOverflow,
           lastScoreEvent: next.applied,
         });
+        if (next.applied && !get().soundMuted) {
+          playCue(next.applied.deltaCoins !== 0 ? 'coins' : 'evidence');
+        }
       },
 
       addCoins: (amount, reason = 'Изменение монет') => {
@@ -136,7 +147,7 @@ export const useGameStore = create<GameState>()(
       },
 
       nextLevel: () => set((state) => ({
-        currentLevel: state.currentLevel + 1,
+        currentLevel: nextUnlockedChapter(state.completedChapters),
         currentDialogue: 0,
         phase: 'chapterMap',
         isReplayingChapter: false,
@@ -144,13 +155,18 @@ export const useGameStore = create<GameState>()(
 
       setCurrentDialogue: (index) => set({ currentDialogue: index }),
 
-      enterChapter: (levelId) => set((state) => ({
-        currentLevel: levelId,
-        currentDialogue: 0,
-        phase: 'dialogue',
-        isReplayingChapter: state.completedChapters.includes(levelId),
-        lastScoreEvent: null,
-      })),
+      enterChapter: (levelId) => set((state) => {
+        const replaying = state.completedChapters.includes(levelId);
+        const resuming = !replaying && state.currentLevel === levelId && state.chapterStarted.includes(levelId);
+        return {
+          currentLevel: levelId,
+          currentDialogue: resuming ? state.currentDialogue : 0,
+          phase: 'dialogue',
+          isReplayingChapter: replaying,
+          lastScoreEvent: null,
+          chapterStarted: uniqueSortedNumbers([...state.chapterStarted, levelId]),
+        };
+      }),
 
       completeStory: (levelId) => {
         sessionAnalytics.completeLevel(levelId);
@@ -172,10 +188,13 @@ export const useGameStore = create<GameState>()(
 
       completeChapter: (levelId) => {
         sessionAnalytics.completeLevel(levelId);
-        set((state) => ({
-          completedChapters: addCompletedChapter(state.completedChapters, levelId),
-          currentLevel: Math.max(state.currentLevel, levelId + 1),
-        }));
+        set((state) => {
+          const completedChapters = addCompletedChapter(state.completedChapters, levelId);
+          return {
+            completedChapters,
+            currentLevel: nextUnlockedChapter(completedChapters),
+          };
+        });
         syncAchievements(set, get);
       },
 
@@ -297,12 +316,39 @@ export const useGameStore = create<GameState>()(
         set({ phase: 'chapterMap' });
       },
 
+      collectEvidence: (ids) => {
+        if (ids.length === 0) return;
+        const state = get();
+        if (state.isReplayingChapter) return;
+        const evidenceFound = ids.reduce((acc, id) => addEvidenceId(acc, id), state.evidenceFound);
+        if (evidenceFound.length === state.evidenceFound.length) return;
+        set({ evidenceFound });
+        if (!state.soundMuted) playCue('evidence');
+        syncAchievements(set, get);
+      },
+
+      setStoryFlags: (flags) => {
+        if (flags.length === 0) return;
+        set((state) => ({
+          storyFlags: uniqueIds([...state.storyFlags, ...flags]),
+        }));
+        syncAchievements(set, get);
+      },
+
+      toggleSoundMuted: () => {
+        const next = !get().soundMuted;
+        setSoundMuted(next);
+        set({ soundMuted: next });
+      },
+
       getEndingId: () => {
         const state = get();
         return resolveEnding({
           finaleDecision: state.finaleDecision,
           coins: state.coins,
           lostAllCoins: state.coins <= 0 || state.finaleDecision === 'loss',
+          evidenceFound: state.evidenceFound,
+          storyFlags: state.storyFlags,
         });
       },
 
@@ -328,6 +374,10 @@ export const useGameStore = create<GameState>()(
       version: SAVE_SCHEMA_VERSION,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted) => migrateSave(persisted),
+      merge: (persisted, current) => ({
+        ...current,
+        ...migrateSave(persisted),
+      }),
       partialize: (state) => ({
         schemaVersion: state.schemaVersion,
         gameVersion: state.gameVersion,
@@ -335,6 +385,7 @@ export const useGameStore = create<GameState>()(
         itemBankVersion: state.itemBankVersion,
         coins: state.coins,
         wisdom: state.wisdom,
+        wisdomOverflow: state.wisdomOverflow,
         currentLevel: state.currentLevel,
         currentDialogue: state.currentDialogue,
         completedChapters: state.completedChapters,
@@ -355,6 +406,10 @@ export const useGameStore = create<GameState>()(
         hasSeenOnboarding: state.hasSeenOnboarding,
         participantId: state.participantId,
         lastScoreEvent: null,
+        evidenceFound: state.evidenceFound,
+        storyFlags: state.storyFlags,
+        chapterStarted: state.chapterStarted,
+        soundMuted: state.soundMuted,
       }),
     }
   )

@@ -1,7 +1,7 @@
 import type { AccessStatus } from '../utils/accessControl';
 import type { GamePhase } from '../store/gameTypes';
 import type { FinaleDecision, ScoreEvent, StoryChoiceRecord } from './scoring';
-import { addCompletedActivity, addCompletedChapter, uniqueIds, uniqueSortedNumbers } from './progress';
+import { addCompletedActivity, addCompletedChapter, canOpenChapter, nextUnlockedChapter, uniqueIds, uniqueSortedNumbers } from './progress';
 import {
   GAME_VERSION,
   ITEM_BANK_VERSION,
@@ -18,6 +18,7 @@ export interface PersistedGameState {
   itemBankVersion: string;
   coins: number;
   wisdom: number;
+  wisdomOverflow: number;
   currentLevel: number;
   currentDialogue: number;
   completedChapters: number[];
@@ -38,6 +39,10 @@ export interface PersistedGameState {
   hasSeenOnboarding: boolean;
   participantId: string;
   lastScoreEvent: ScoreEvent | null;
+  evidenceFound: string[];
+  storyFlags: string[];
+  chapterStarted: number[];
+  soundMuted: boolean;
 }
 
 export function createParticipantId(): string {
@@ -55,6 +60,7 @@ export function createDefaultPersistedState(): PersistedGameState {
     itemBankVersion: ITEM_BANK_VERSION,
     coins: STARTING_COINS,
     wisdom: 0,
+    wisdomOverflow: 0,
     currentLevel: 0,
     currentDialogue: 0,
     completedChapters: [],
@@ -75,6 +81,10 @@ export function createDefaultPersistedState(): PersistedGameState {
     hasSeenOnboarding: false,
     participantId: createParticipantId(),
     lastScoreEvent: null,
+    evidenceFound: [],
+    storyFlags: [],
+    chapterStarted: [],
+    soundMuted: false,
   };
 }
 
@@ -97,6 +107,11 @@ function asStringRecord(value: unknown, fallbackIds: string[] = []): Record<stri
     );
   }
   return Object.fromEntries(fallbackIds.map((id) => [id, '']));
+}
+
+function repairCurrentLevel(currentLevel: number, completedChapters: number[]): number {
+  if (canOpenChapter(currentLevel, completedChapters)) return currentLevel;
+  return nextUnlockedChapter(completedChapters);
 }
 
 function migrateLegacyCompletedLevels(completedLevels: unknown): { chapters: number[]; activities: string[] } {
@@ -136,13 +151,23 @@ export function migrateSave(raw: unknown): PersistedGameState {
   const achievements = asStringArray(persisted.achievements);
   const achievementUnlocks = asStringRecord(persisted.achievementUnlocks, achievements);
   const mergedAchievements = Array.from(new Set([...achievements, ...Object.keys(achievementUnlocks)]));
+  const rawLevel = typeof persisted.currentLevel === 'number' ? persisted.currentLevel : base.currentLevel;
+  const currentLevel = repairCurrentLevel(rawLevel, completedChapters);
+  const jumpedAhead = rawLevel !== currentLevel;
+  const rawPhase = typeof persisted.phase === 'string' ? persisted.phase as GamePhase : 'landing';
+  const phase = jumpedAhead && (rawPhase === 'dialogue' || rawPhase === 'quiz')
+    ? 'chapterMap'
+    : rawPhase;
 
   return {
     ...base,
     coins: typeof persisted.coins === 'number' ? persisted.coins : base.coins,
     wisdom: typeof persisted.wisdom === 'number' ? persisted.wisdom : base.wisdom,
-    currentLevel: typeof persisted.currentLevel === 'number' ? persisted.currentLevel : base.currentLevel,
-    currentDialogue: typeof persisted.currentDialogue === 'number' ? persisted.currentDialogue : base.currentDialogue,
+    wisdomOverflow: typeof persisted.wisdomOverflow === 'number' ? persisted.wisdomOverflow : 0,
+    currentLevel,
+    currentDialogue: jumpedAhead
+      ? 0
+      : typeof persisted.currentDialogue === 'number' ? persisted.currentDialogue : base.currentDialogue,
     completedChapters,
     completedActivities,
     chapterQuizScores: persisted.chapterQuizScores && typeof persisted.chapterQuizScores === 'object'
@@ -163,10 +188,14 @@ export function migrateSave(raw: unknown): PersistedGameState {
       ? accessStatus
       : 'free',
     pendingLevel: typeof persisted.pendingLevel === 'number' ? persisted.pendingLevel : null,
-    phase: typeof persisted.phase === 'string' ? persisted.phase as GamePhase : 'landing',
+    phase,
     hasSeenOnboarding: Boolean(persisted.hasSeenOnboarding),
     participantId: typeof persisted.participantId === 'string' ? persisted.participantId : base.participantId,
     lastScoreEvent: null,
+    evidenceFound: uniqueIds(asStringArray(persisted.evidenceFound)),
+    storyFlags: uniqueIds(asStringArray(persisted.storyFlags)),
+    chapterStarted: uniqueSortedNumbers(asNumberArray(persisted.chapterStarted)),
+    soundMuted: Boolean(persisted.soundMuted),
     schemaVersion: SAVE_SCHEMA_VERSION,
     gameVersion: GAME_VERSION,
     scenarioVersion: SCENARIO_VERSION,

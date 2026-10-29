@@ -1,7 +1,7 @@
 export const GAME_VERSION = '2.0.0';
 export const SCENARIO_VERSION = '2.0.0';
 export const ITEM_BANK_VERSION = '2.0.0';
-export const SAVE_SCHEMA_VERSION = 2;
+export const SAVE_SCHEMA_VERSION = 4;
 
 export const SAVE_STORAGE_KEY = 'gold-detector-save';
 export const RESEARCH_EVENTS_KEY = 'gold-detector-research-events';

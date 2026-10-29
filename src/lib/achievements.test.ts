@@ -14,7 +14,7 @@ const emptySignals = {
 
 describe('achievement unlocks', () => {
   it('unlocks each achievement only once', () => {
-    const first = evaluateAchievements({ ...emptySignals, redFlagOpens: 1 }, []);
+    const first = evaluateAchievements({ ...emptySignals, redFlagOpens: 3 }, []);
     expect(first).toEqual(['first-red-flag']);
     const second = evaluateAchievements({ ...emptySignals, redFlagOpens: 4 }, ['first-red-flag']);
     expect(second).toEqual([]);
@@ -22,15 +22,17 @@ describe('achievement unlocks', () => {
 
   it('maps real player actions to the eight badges', () => {
     const ids = evaluateAchievements({
-      redFlagOpens: 1,
+      redFlagOpens: 3,
       finePrintOpens: 1,
       legitimateCorrect: 1,
       calibratedCorrect: 1,
       postTestScore: 8,
       completedChapters: [3],
+      evidenceFound: ['swapped-domain', 'hidden-fee'],
       storyChoices: [
         { consequence: 'pause', selectedIndependentCheck: false },
         { consequence: 'check', selectedIndependentCheck: true },
+        { consequence: 'safe', selectedIndependentCheck: false },
       ],
     }, []);
     expect(ids).toEqual([
@@ -38,11 +40,26 @@ describe('achievement unlocks', () => {
       'cool-head',
       'check-facts',
       'fine-print',
-      'not-one-basket',
+      'trail-finder',
+      'count-myself',
+      'not-all-gold',
       'golden-detector',
-      'no-false-alarm',
-      'calibrated-confidence',
     ]);
+  });
+
+  it('does not unlock pause and fact-check from one generic answer', () => {
+    expect(evaluateAchievements({
+      ...emptySignals,
+      storyChoices: [{ consequence: 'pause', selectedIndependentCheck: true }],
+    }, [])).toEqual(['cool-head']);
+    expect(evaluateAchievements({
+      ...emptySignals,
+      storyChoices: [{ consequence: 'check', selectedIndependentCheck: true }],
+    }, [])).toEqual(['check-facts']);
+  });
+
+  it('does not unlock the first red flag from a single info card', () => {
+    expect(evaluateAchievements({ ...emptySignals, redFlagOpens: 1 }, [])).toEqual([]);
   });
 
   it('keeps the first unlock timestamp', () => {

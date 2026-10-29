@@ -3,8 +3,10 @@ import { LEARNING_STAGES } from '../data/learningStages';
 import {
   addCompletedActivity,
   addCompletedChapter,
+  canOpenChapter,
   completedChapterCount,
   completedStageCount,
+  currentChapterFromProgress,
   nextUnlockedChapter,
 } from './progress';
 
@@ -28,5 +30,14 @@ describe('progress counters', () => {
     expect(completedChapterCount(once)).toBe(1);
     expect(completedChapterCount(twice)).toBe(1);
     expect(nextUnlockedChapter(twice)).toBe(1);
+  });
+
+  it('treats only the first unfinished chapter as current and locks the rest', () => {
+    const completed = [0, 1, 2, 3];
+    expect(currentChapterFromProgress(completed)).toBe(4);
+    expect(canOpenChapter(3, completed)).toBe(true);
+    expect(canOpenChapter(4, completed)).toBe(true);
+    expect(canOpenChapter(5, completed)).toBe(false);
+    expect(canOpenChapter(6, completed)).toBe(false);
   });
 });

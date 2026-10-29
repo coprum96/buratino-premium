@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   CALCULATOR_LIMITS,
   CALCULATOR_SCENARIOS,
@@ -9,9 +9,10 @@ import {
 
 interface LossCalculatorProps {
   scenario?: CalculatorScenario;
+  onValidityChange?: (ok: boolean) => void;
 }
 
-export function LossCalculator({ scenario }: LossCalculatorProps) {
+export function LossCalculator({ scenario, onValidityChange }: LossCalculatorProps) {
   const [amount, setAmount] = useState('10000');
   const [months, setMonths] = useState('12');
   const [selectedScenario, setSelectedScenario] = useState<CalculatorScenario>(scenario || CALCULATOR_SCENARIOS[0]);
@@ -20,6 +21,10 @@ export function LossCalculator({ scenario }: LossCalculatorProps) {
     if (!validation.ok || validation.amount === null || validation.months === null) return null;
     return calculateScenario(selectedScenario, validation.amount, validation.months);
   }, [selectedScenario, validation]);
+
+  useEffect(() => {
+    onValidityChange?.(validation.ok);
+  }, [validation.ok, onValidityChange]);
 
   return (
     <section className="surface-card max-w-4xl mx-auto">

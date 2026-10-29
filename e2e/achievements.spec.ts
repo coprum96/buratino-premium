@@ -39,6 +39,13 @@ test('achievement unlocks once, persists, and closes from CTA or Escape', async 
   const skip = page.getByRole('button', { name: 'Показать весь текст' });
   if (await skip.isVisible()) await skip.click();
   await page.getByRole('button', { name: 'Импульсивные траты без плана' }).click();
+  await page.getByRole('button', { name: 'Закрыть окно' }).click();
+  await page.getByRole('button', { name: 'Отсутствие защиты и обучения' }).click();
+  await page.getByRole('button', { name: 'Закрыть окно' }).click();
+  await page.getByRole('button', { name: /Да! Я готов учиться/ }).click();
+  await page.getByRole('button', { name: 'Далее' }).click();
+  if (await skip.isVisible()) await skip.click();
+  await page.getByRole('button', { name: 'Игнорирование телесных сигналов' }).click();
   const dialog = page.getByTestId('achievement-unlock');
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Первый красный флаг' })).toBeVisible();

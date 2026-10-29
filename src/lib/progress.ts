@@ -19,22 +19,26 @@ export function completedStageCount(completedActivities: string[]): number {
   return Math.min(TOTAL_LEARNING_STAGES, unique.length);
 }
 
-export function canOpenChapter(chapterId: number, currentLevel: number, completedChapters: number[]): boolean {
-  if (chapterId < 0 || chapterId >= TOTAL_CHAPTERS) return false;
-  if (completedChapters.includes(chapterId)) return true;
-  return chapterId <= currentLevel;
-}
-
-export function isChapterLockedByProgress(chapterId: number, currentLevel: number, completedChapters: number[]): boolean {
-  return !canOpenChapter(chapterId, currentLevel, completedChapters);
-}
-
 export function nextUnlockedChapter(completedChapters: number[]): number {
   const unique = uniqueSortedNumbers(completedChapters);
   for (let id = 0; id < TOTAL_CHAPTERS; id += 1) {
     if (!unique.includes(id)) return id;
   }
   return TOTAL_CHAPTERS - 1;
+}
+
+export function currentChapterFromProgress(completedChapters: number[]): number {
+  return nextUnlockedChapter(completedChapters);
+}
+
+export function canOpenChapter(chapterId: number, completedChapters: number[]): boolean {
+  if (chapterId < 0 || chapterId >= TOTAL_CHAPTERS) return false;
+  if (completedChapters.includes(chapterId)) return true;
+  return chapterId === nextUnlockedChapter(completedChapters);
+}
+
+export function isChapterLockedByProgress(chapterId: number, completedChapters: number[]): boolean {
+  return !canOpenChapter(chapterId, completedChapters);
 }
 
 export function addCompletedChapter(completedChapters: number[], chapterId: number): number[] {

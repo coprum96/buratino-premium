@@ -4,9 +4,13 @@ import { migrateSave } from './storage';
 describe('save migrations', () => {
   it('creates a fresh save from empty storage', () => {
     const state = migrateSave(null);
-    expect(state.schemaVersion).toBe(2);
+    expect(state.schemaVersion).toBe(4);
     expect(state.coins).toBe(5);
     expect(state.completedChapters).toEqual([]);
+    expect(state.evidenceFound).toEqual([]);
+    expect(state.storyFlags).toEqual([]);
+    expect(state.chapterStarted).toEqual([]);
+    expect(state.soundMuted).toBe(false);
     expect(state.participantId.startsWith('p_')).toBe(true);
   });
 
@@ -27,6 +31,19 @@ describe('save migrations', () => {
     ]);
     expect(state.accessStatus).toBe('promo');
     expect(state.coins).toBe(3);
+  });
+
+  it('repairs a skipped currentLevel back to the first unfinished chapter', () => {
+    const state = migrateSave({
+      completedChapters: [0, 1, 2, 3],
+      currentLevel: 5,
+      currentDialogue: 3,
+      phase: 'dialogue',
+    });
+    expect(state.currentLevel).toBe(4);
+    expect(state.currentDialogue).toBe(0);
+    expect(state.phase).toBe('chapterMap');
+    expect(state.wisdomOverflow).toBe(0);
   });
 
   it('reads zustand persist envelopes', () => {

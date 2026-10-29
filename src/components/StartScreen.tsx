@@ -46,11 +46,7 @@ export function StartScreen() {
         />
 
         <h1 className="text-4xl sm:text-6xl font-bold mb-3 motion-enter">Золотой Детектор</h1>
-        <p className="text-lg sm:text-2xl mb-6 text-white/85">Защита от финансового мошенничества</p>
-        <p className="prose-narrow mb-8 text-white/80">
-          Учебная игра для подростков 14–17 лет. Прогресс сохраняется в этом браузере.
-          Монеты и мудрость меняются от твоих решений, а не от красивого финала.
-        </p>
+        <p className="text-lg sm:text-2xl mb-8 text-white/85">Защита от финансового мошенничества</p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           {saved && (
@@ -73,7 +69,7 @@ export function StartScreen() {
       {confirmReset && (
         <ConfirmDialog
           title="Начать заново?"
-          message="Прогресс, монеты, мудрость, промокод и результаты будут удалены. Это нельзя отменить."
+          message="Прогресс, монеты, репутация, улики, промокод и результаты будут удалены. Это нельзя отменить."
           onConfirm={handleReset}
           onCancel={() => setConfirmReset(false)}
         />

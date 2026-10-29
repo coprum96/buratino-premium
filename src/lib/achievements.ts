@@ -8,6 +8,7 @@ export interface AchievementSignals {
   postTestScore: number;
   completedChapters: number[];
   storyChoices: Array<{ consequence?: string; selectedIndependentCheck?: boolean }>;
+  evidenceFound?: string[];
 }
 
 export interface AchievementUnlock {
@@ -18,18 +19,21 @@ export interface AchievementUnlock {
 export function evaluateAchievements(signals: AchievementSignals, already: string[]): string[] {
   const unlocked = new Set(already);
   const next: string[] = [];
-  const hasPause = signals.storyChoices.some((choice) => choice.consequence === 'pause' || choice.consequence === 'check');
-  const hasCheck = signals.storyChoices.some((choice) => choice.consequence === 'check' || choice.selectedIndependentCheck);
+  const hasPause = signals.storyChoices.some((choice) => choice.consequence === 'pause');
+  const hasCheck = signals.storyChoices.some((choice) => choice.consequence === 'check');
+  const evidence = new Set(signals.evidenceFound ?? []);
+  const refusedAfterCheck = signals.storyChoices.some((choice) => choice.consequence === 'safe')
+    && hasCheck;
 
   const rules: Record<string, boolean> = {
-    'first-red-flag': signals.redFlagOpens >= 1,
+    'first-red-flag': signals.redFlagOpens >= 3,
     'cool-head': hasPause,
     'check-facts': hasCheck,
     'fine-print': signals.finePrintOpens >= 1,
-    'not-one-basket': signals.completedChapters.includes(3),
+    'trail-finder': evidence.has('swapped-domain'),
+    'count-myself': evidence.has('hidden-fee'),
+    'not-all-gold': refusedAfterCheck,
     'golden-detector': signals.postTestScore >= 8,
-    'no-false-alarm': signals.legitimateCorrect >= 1,
-    'calibrated-confidence': signals.calibratedCorrect >= 1,
   };
 
   for (const achievement of ACHIEVEMENTS) {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FaBook, FaCheckCircle, FaCrown, FaLock, FaRedo, FaStar } from 'react-icons/fa';
 import { CHAPTER_META, TOTAL_GAME_DURATION_MIN } from '../data/learningStages';
 import { levels } from '../data/gameData';
-import { completedChapterCount } from '../lib/progress';
+import { canOpenChapter, completedChapterCount, currentChapterFromProgress } from '../lib/progress';
 import { TOTAL_CHAPTERS } from '../lib/versions';
 import { useGameStore } from '../store/gameStore';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -11,7 +11,6 @@ const ICONS = ['🪙', '🎭', '🧮', '🧺', '🫀', '🎯', '📋', '🏆'];
 
 export function ChapterMap() {
   const {
-    currentLevel,
     completedChapters,
     checkLevelAccess,
     setPendingLevel,
@@ -19,13 +18,15 @@ export function ChapterMap() {
     enterChapter,
     resetGame,
     accessStatus,
+    chapterStarted,
   } = useGameStore();
   const [confirmReset, setConfirmReset] = useState(false);
   const completed = completedChapterCount(completedChapters);
   const fullAccess = accessStatus === 'promo' || accessStatus === 'paid';
+  const currentChapter = currentChapterFromProgress(completedChapters);
 
   const handleChapterClick = (levelIndex: number) => {
-    const isAvailable = levelIndex <= currentLevel || completedChapters.includes(levelIndex);
+    const isAvailable = canOpenChapter(levelIndex, completedChapters);
     if (!isAvailable) return;
 
     if (!checkLevelAccess(levelIndex)) {
@@ -46,8 +47,11 @@ export function ChapterMap() {
             Карта приключений
           </h1>
           <p className="text-white/80">
-            Ориентир по времени всей игры: около {TOTAL_GAME_DURATION_MIN} минут.
+            Восемь глав одного дела. Ориентир по времени: около {TOTAL_GAME_DURATION_MIN} минут.
           </p>
+          <button type="button" className="btn mt-3" onClick={() => setPhase('caseBoard')}>
+            Открыть дело Карабаса
+          </button>
           {fullAccess && (
             <p className="mt-2 text-sm text-white/75">
               Полный контент доступен. Главы открываются последовательно.
@@ -59,8 +63,8 @@ export function ChapterMap() {
           {levels.map((level, index) => {
             const meta = CHAPTER_META[index];
             const isCompleted = completedChapters.includes(level.id);
-            const isAvailable = index <= currentLevel || isCompleted;
-            const isCurrent = index === currentLevel && !isCompleted;
+            const isAvailable = canOpenChapter(index, completedChapters);
+            const isCurrent = index === currentChapter && !isCompleted;
             const isPremium = index > 2;
             const hasAccess = checkLevelAccess(index);
 
@@ -94,7 +98,7 @@ export function ChapterMap() {
                     className="btn btn-primary w-full"
                     onClick={() => handleChapterClick(index)}
                   >
-                    {isCompleted ? 'Пройти ещё раз' : isCurrent ? 'Продолжить главу' : 'Начать главу'}
+                    {isCompleted ? 'Пройти ещё раз' : chapterStarted.includes(index) ? 'Продолжить главу' : 'Начать главу'}
                   </button>
                 )}
 
@@ -126,7 +130,7 @@ export function ChapterMap() {
       {confirmReset && (
         <ConfirmDialog
           title="Сбросить прогресс?"
-          message="Главы, монеты, мудрость, промокод и результаты будут удалены."
+          message="Главы, монеты, репутация, улики, промокод и результаты будут удалены."
           onConfirm={() => {
             resetGame();
             setConfirmReset(false);

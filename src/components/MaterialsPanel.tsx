@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { controlQuestions, educationalMaterials, redFlags } from '../data/gameData';
 import { useGameStore } from '../store/gameStore';
+import { sessionAnalytics } from '../utils/sessionAnalytics';
 import { Modal } from './ui/Modal';
 
 type PanelView = 'menu' | 'materials' | 'questions' | 'flags';
@@ -12,6 +13,15 @@ export function MaterialsPanel() {
   const [selectedMaterial, setSelectedMaterial] = useState(0);
 
   const material = educationalMaterials[selectedMaterial];
+
+  useEffect(() => {
+    if (!showMaterialsPanel || view !== 'materials') return;
+    sessionAnalytics.startMaterialView(material.id);
+    return () => {
+      sessionAnalytics.endMaterialView(material.id, material.title);
+    };
+  }, [showMaterialsPanel, view, material.id, material.title]);
+
   const filteredSections = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return material.sections;

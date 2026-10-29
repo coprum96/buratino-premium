@@ -1,7 +1,7 @@
 import { getEndingContent } from '../../src/lib/endings';
 
 export function FinalPayoffScene(_props: { t?: number }) {
-  const ending = getEndingContent('safe', 5);
+  const ending = getEndingContent('golden', 5);
   return (
     <section className="film-scene film-payoff" data-scene="payoff">
       <div className="film-safe text-center">

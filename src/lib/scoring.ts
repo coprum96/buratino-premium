@@ -43,19 +43,42 @@ export function clampCoins(value: number): number {
   return Math.max(SCORING_RULES.coinsMin, value);
 }
 
+export function normalizeWisdomDelta(delta: number): number {
+  if (delta === 0) return 0;
+  if (delta > 0) {
+    if (delta <= 15) return 3;
+    if (delta <= 25) return 5;
+    if (delta <= 40) return 7;
+    return 10;
+  }
+  if (delta >= -10) return -3;
+  if (delta >= -20) return -5;
+  return -8;
+}
+
 export function applyScoreChange(
-  current: { wisdom: number; coins: number },
+  current: { wisdom: number; coins: number; wisdomOverflow?: number },
   event: ScoreEvent,
   isReplay: boolean
-): { wisdom: number; coins: number; applied: ScoreEvent | null } {
+): { wisdom: number; coins: number; wisdomOverflow: number; applied: ScoreEvent | null } {
+  const overflow = current.wisdomOverflow ?? 0;
   if (isReplay || (event.deltaWisdom === 0 && event.deltaCoins === 0)) {
-    return { wisdom: current.wisdom, coins: current.coins, applied: null };
+    return { wisdom: current.wisdom, coins: current.coins, wisdomOverflow: overflow, applied: null };
   }
 
+  const applied: ScoreEvent = {
+    ...event,
+    deltaWisdom: normalizeWisdomDelta(event.deltaWisdom),
+  };
+  const uncapped = current.wisdom + applied.deltaWisdom;
+  const nextWisdom = clampWisdom(uncapped);
+  const overflowGain = applied.deltaWisdom > 0 ? Math.max(0, uncapped - SCORING_RULES.wisdomMax) : 0;
+
   return {
-    wisdom: clampWisdom(current.wisdom + event.deltaWisdom),
-    coins: clampCoins(current.coins + event.deltaCoins),
-    applied: event,
+    wisdom: nextWisdom,
+    coins: clampCoins(current.coins + applied.deltaCoins),
+    wisdomOverflow: overflow + overflowGain,
+    applied,
   };
 }
 
@@ -71,8 +94,11 @@ export function describeScoreEvent(event: ScoreEvent): string {
 }
 
 export function isIndependentCheckChoice(text: string, consequence?: string): boolean {
-  if (consequence === 'check' || consequence === 'pause') return true;
-  return /провер|подума|вопрос|72 час|не уверен|пауз|независим/i.test(text);
+  if (consequence === 'check') return true;
+  if (consequence === 'pause' || consequence === 'safe' || consequence === 'risky' || consequence === 'loss') {
+    return false;
+  }
+  return /независим|провер.*документ|провер.*договор|провер.*реестр|провер.*факт/i.test(text);
 }
 
 export interface FinalScoreInput {

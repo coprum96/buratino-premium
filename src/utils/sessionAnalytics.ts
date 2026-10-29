@@ -534,4 +534,5 @@ class SessionAnalytics {
 
 // Экспортируем единственный экземпляр
 export const sessionAnalytics = new SessionAnalytics();
+sessionAnalytics.restoreSession();
 

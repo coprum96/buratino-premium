@@ -19,6 +19,11 @@ describe('validateCalculatorInput', () => {
     expect(validateCalculatorInput('10000', '-3').errors.months).toMatch(/от 1 до 60/);
     expect(validateCalculatorInput('10000', '1.5').errors.months).toMatch(/целым/);
     expect(validateCalculatorInput('10000', '0').errors.months).toMatch(/от 1 до 60/);
+    expect(validateCalculatorInput('10000', '').errors.months).toBeTruthy();
+    expect(validateCalculatorInput('10000', '61').errors.months).toMatch(/от 1 до 60/);
+    expect(validateCalculatorInput('-100', '-2').ok).toBe(false);
+    expect(validateCalculatorInput('-100', '-2').errors.amount).toMatch(/больше нуля/);
+    expect(validateCalculatorInput('-100', '-2').errors.months).toMatch(/от 1 до 60/);
   });
 
   it('accepts a valid amount and whole months', () => {

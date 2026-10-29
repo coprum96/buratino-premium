@@ -8,4 +8,5 @@ export type GamePhase =
   | 'complexTest'
   | 'postTest'
   | 'ending'
-  | 'paywall';
+  | 'paywall'
+  | 'caseBoard';

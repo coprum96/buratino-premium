@@ -1,17 +1,29 @@
 import { useEffect, useState } from 'react';
-import { completedChapterCount, completedStageCount } from '../lib/progress';
+import { EVIDENCE_CATALOG } from '../data/evidence';
+import { reputationRank } from '../lib/evidence';
 import { describeScoreEvent } from '../lib/scoring';
-import { TOTAL_CHAPTERS, TOTAL_LEARNING_STAGES } from '../lib/versions';
 import { useGameStore } from '../store/gameStore';
 import { LiveRegion } from './ui/LiveRegion';
 
 export function StatsBar() {
-  const { coins, wisdom, completedChapters, completedActivities, lastScoreEvent, toggleAchievementGallery, achievementUnlocks } = useGameStore();
+  const {
+    coins,
+    wisdom,
+    wisdomOverflow,
+    lastScoreEvent,
+    toggleAchievementGallery,
+    achievementUnlocks,
+    evidenceFound,
+    soundMuted,
+    toggleSoundMuted,
+    setPhase,
+    phase,
+  } = useGameStore();
   const unlocked = Object.keys(achievementUnlocks).length;
   const [prevCoins, setPrevCoins] = useState(coins);
   const [coinAnimation, setCoinAnimation] = useState(false);
-  const chapters = completedChapterCount(completedChapters);
-  const stages = completedStageCount(completedActivities);
+  const rank = reputationRank(wisdom);
+  const clues = evidenceFound.length;
 
   useEffect(() => {
     if (coins !== prevCoins) {
@@ -36,25 +48,50 @@ export function StatsBar() {
       </div>
 
       <div
-        className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-purple-400/20 flex items-center gap-2 min-h-11 min-w-[7.5rem]"
-        title="Мудрость — баллы за осторожные решения и верные ответы, максимум 100."
+        className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-purple-400/20 flex items-center gap-2 min-h-11 min-w-[8.5rem]"
+        title="Репутация следователя — те же баллы, что копятся за осторожные решения. Повтор главы их не удваивает."
       >
         <span aria-hidden="true">💡</span>
         <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden" aria-hidden="true">
           <div className="h-full bg-gradient-to-r from-purple-500 to-pink-400" style={{ width: `${wisdom}%` }} />
         </div>
-        <span className="text-sm font-semibold">{wisdom}%</span>
-        <span className="sr-only">Мудрость: {wisdom} процентов</span>
+        <span className="text-sm font-semibold">{rank}</span>
+        {wisdomOverflow > 0 && <span className="text-xs text-white/75">+{wisdomOverflow}</span>}
+        <span className="sr-only">Репутация: {rank}, {wisdom} процентов{wisdomOverflow > 0 ? `, опыт сверх шкалы: ${wisdomOverflow}` : ''}</span>
       </div>
 
       <div
-        className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-blue-400/20 flex items-center gap-2 min-h-11"
-        title={`Завершённые главы: ${chapters} из ${TOTAL_CHAPTERS}. На карте считаются только главы, не тесты.`}
+        className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-amber-400/30 flex items-center gap-2 min-h-11"
+        title={`Улики на доске дела: ${clues} из ${EVIDENCE_CATALOG.length}.`}
       >
-        <span aria-hidden="true">📘</span>
-        <span className="text-sm font-semibold">{chapters}/{TOTAL_CHAPTERS}</span>
-        <span className="sr-only">Завершено глав: {chapters} из {TOTAL_CHAPTERS}</span>
+        <span aria-hidden="true">🧷</span>
+        <span className="text-sm font-semibold">{clues}/{EVIDENCE_CATALOG.length}</span>
+        <span className="sr-only">Улик собрано: {clues} из {EVIDENCE_CATALOG.length}</span>
       </div>
+
+      {phase !== 'caseBoard' && (
+        <button
+          type="button"
+          className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-amber-200/40 flex items-center gap-2 min-h-11"
+          onClick={() => setPhase('caseBoard')}
+          title="Открыть доску дела"
+        >
+          <span aria-hidden="true">🗂️</span>
+          <span className="text-sm font-semibold">Дело</span>
+          <span className="sr-only">Открыть доску дела Карабаса</span>
+        </button>
+      )}
+
+      <button
+        type="button"
+        className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-white/20 flex items-center gap-2 min-h-11"
+        onClick={toggleSoundMuted}
+        title={soundMuted ? 'Включить звук' : 'Выключить звук'}
+        aria-pressed={soundMuted}
+      >
+        <span aria-hidden="true">{soundMuted ? '🔇' : '🔊'}</span>
+        <span className="sr-only">{soundMuted ? 'Звук выключен, включить' : 'Звук включён, выключить'}</span>
+      </button>
 
       <button
         type="button"
@@ -66,15 +103,6 @@ export function StatsBar() {
         <span className="text-sm font-semibold">{unlocked}/8</span>
         <span className="sr-only">Открыть галерею достижений, открыто {unlocked} из 8</span>
       </button>
-
-      <div
-        className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-full border border-teal-400/20 flex items-center gap-2 min-h-11"
-        title={`Учебные этапы: сюжет и проверка глав 1–7, всего ${TOTAL_LEARNING_STAGES}. Это не число глав.`}
-      >
-        <span aria-hidden="true">🧩</span>
-        <span className="text-sm font-semibold">{stages}/{TOTAL_LEARNING_STAGES}</span>
-        <span className="sr-only">Завершено учебных этапов: {stages} из {TOTAL_LEARNING_STAGES}</span>
-      </div>
     </div>
   );
 }

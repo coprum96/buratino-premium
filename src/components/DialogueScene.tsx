@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CHAPTER_META } from '../data/learningStages';
 import { characters, levels, type Choice, type RedFlagDetail } from '../data/gameData';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
@@ -12,7 +12,7 @@ import { MicroscopeView } from './MicroscopeView';
 import { PresentationViewer } from './PresentationViewer';
 import { PressureTimer } from './PressureTimer';
 import { RedFlagModal } from './RedFlagModal';
-import { LiveRegion } from './ui/LiveRegion';
+import { SiteCompareTask } from './tasks/SiteCompareTask';
 
 export function DialogueScene() {
   const {
@@ -26,9 +26,14 @@ export function DialogueScene() {
     checkLevelAccess,
     setPendingLevel,
     recordStoryChoice,
+    storyChoices,
     finaleDecision,
     lastScoreEvent,
     isReplayingChapter,
+    collectEvidence,
+    setStoryFlags,
+    storyFlags,
+    coins,
   } = useGameStore();
   const reducedMotion = usePrefersReducedMotion();
   const [displayedText, setDisplayedText] = useState('');
@@ -40,6 +45,11 @@ export function DialogueScene() {
   const [showTimer, setShowTimer] = useState(true);
   const [timerCompleted, setTimerCompleted] = useState(false);
   const [pendingChoice, setPendingChoice] = useState<Choice | null>(null);
+  const [calculatorReady, setCalculatorReady] = useState(true);
+  const [siteCompareReady, setSiteCompareReady] = useState(false);
+  const handleCalculatorValidity = useCallback((ok: boolean) => {
+    setCalculatorReady(ok);
+  }, []);
 
   const level = levels[currentLevel];
   const dialogue = level?.dialogues[currentDialogue];
@@ -47,11 +57,17 @@ export function DialogueScene() {
   const meta = CHAPTER_META[currentLevel];
   const visibleText = useMemo(() => {
     if (!dialogue) return '';
-    if (finaleDecision && dialogue.variants?.[finaleDecision]) {
+    if (currentLevel === 7 && finaleDecision && dialogue.variants?.[finaleDecision]) {
       return dialogue.variants[finaleDecision]!.text;
     }
+    const lastConsequence = [...storyChoices]
+      .reverse()
+      .find((choice) => choice.chapterId === currentLevel)?.consequence;
+    if (lastConsequence && dialogue.variants && lastConsequence in dialogue.variants) {
+      return dialogue.variants[lastConsequence as keyof typeof dialogue.variants]!.text;
+    }
     return dialogue.text;
-  }, [dialogue, finaleDecision]);
+  }, [dialogue, finaleDecision, storyChoices, currentLevel]);
 
   useEffect(() => {
     if (currentDialogue === 0 && level) {
@@ -62,6 +78,8 @@ export function DialogueScene() {
   useEffect(() => {
     if (!dialogue) return;
     setPendingChoice(null);
+    setCalculatorReady(true);
+    setSiteCompareReady(false);
     setShowTimer(true);
     setTimerCompleted(false);
     if (reducedMotion) {
@@ -142,6 +160,8 @@ export function DialogueScene() {
     });
     if (choice.wisdom) addWisdom(choice.wisdom, choice.feedback || choice.text);
     if (choice.coins) addCoins(choice.coins, choice.feedback || choice.text);
+    if (choice.evidence) collectEvidence(choice.evidence);
+    if (choice.flags) setStoryFlags(choice.flags);
     setPendingChoice(choice);
   };
 
@@ -153,7 +173,11 @@ export function DialogueScene() {
             На карту
           </button>
           {isReplayingChapter && <p className="text-sm text-white/70">Повтор: баллы не начисляются снова</p>}
+          <button type="button" className="btn" onClick={() => setPhase('caseBoard')}>Дело</button>
         </div>
+        {storyFlags.includes('lost-coin-karabas') && coins < 5 && (
+          <p className="mb-4 text-sm text-amber-100/90">Подушка тоньше: у Карабаса уже ушла одна монета. Часть «вложить всё» теперь бьёт больнее.</p>
+        )}
 
         {currentDialogue === 0 && meta && (
           <section className="surface-card mb-5">
@@ -180,15 +204,20 @@ export function DialogueScene() {
 
         <section className="surface-card mb-5">
           <p className="text-lg leading-relaxed whitespace-pre-line">{displayedText}{isTyping && '▋'}</p>
-          {isTyping && (
-            <button type="button" className="btn mt-4" onClick={() => {
+          <button
+            type="button"
+            className={`btn mt-4 ${isTyping ? '' : 'invisible pointer-events-none'}`}
+            tabIndex={isTyping ? 0 : -1}
+            aria-hidden={!isTyping}
+            disabled={!isTyping}
+            onClick={() => {
               setDisplayedText(visibleText);
               setIsTyping(false);
               setShowChoices(true);
-            }}>
-              Показать весь текст
-            </button>
-          )}
+            }}
+          >
+            Показать весь текст
+          </button>
 
           {dialogue.redFlagsData && !isTyping && (
             <div className="mt-5 p-4 bg-danger/15 border border-danger/40 rounded-xl motion-danger">
@@ -228,7 +257,17 @@ export function DialogueScene() {
           />
         )}
 
-        {dialogue.calculator && !isTyping && <div className="mb-5"><LossCalculator /></div>}
+        {dialogue.calculator && !isTyping && (
+          <div className="mb-5">
+            <LossCalculator onValidityChange={handleCalculatorValidity} />
+          </div>
+        )}
+        {dialogue.siteCompare && !isTyping && (
+          <SiteCompareTask onComplete={() => {
+            collectEvidence(['swapped-domain', 'golden-stage', 'personal-card']);
+            setSiteCompareReady(true);
+          }} />
+        )}
         {dialogue.matchGame && !isTyping && (
           <div className="mb-5">
             <MatchGame onComplete={(score) => addWisdom(score * 2, 'Игра на сопоставление')} />
@@ -261,8 +300,20 @@ export function DialogueScene() {
 
         {showChoices && !pendingChoice && (
           <div className="space-y-3 motion-stagger">
+            {dialogue.calculator && !calculatorReady && (
+              <p className="text-sm text-white/75">Сначала введи корректные сумму и срок — тогда можно продолжить.</p>
+            )}
+            {dialogue.siteCompare && !siteCompareReady && (
+              <p className="text-sm text-white/75">Найди три отличия на витринах — тогда улика попадёт в дело.</p>
+            )}
             {dialogue.choices.map((choice) => (
-              <button key={choice.text} type="button" className="choice-card motion-choice" onClick={() => handleChoice(choice)}>
+              <button
+                key={choice.text}
+                type="button"
+                className="choice-card motion-choice"
+                disabled={Boolean((dialogue.calculator && !calculatorReady) || (dialogue.siteCompare && !siteCompareReady))}
+                onClick={() => handleChoice(choice)}
+              >
                 <span aria-hidden="true">{choice.icon}</span>
                 <span>{choice.text}</span>
               </button>
@@ -271,7 +322,7 @@ export function DialogueScene() {
         )}
 
         {pendingChoice && (
-          <section className="surface-card mt-4" aria-live="polite">
+          <section className="surface-card mt-4">
             <h3 className="font-bold mb-2">Что это значит</h3>
             <p className="mb-3 leading-relaxed">
               {pendingChoice.feedback
@@ -288,20 +339,28 @@ export function DialogueScene() {
       </div>
 
       {showPresentation && dialogue.presentation && (
-        <PresentationViewer slides={dialogue.presentation} onClose={() => setShowPresentation(false)} />
+        <PresentationViewer
+          slides={dialogue.presentation}
+          onClose={() => {
+            collectEvidence(['promised-yield', 'golden-stage']);
+            setShowPresentation(false);
+          }}
+        />
       )}
       {showMicroscope && dialogue.microscope && (
         <MicroscopeView
           title={dialogue.microscope.title}
           smallPrintText={dialogue.microscope.smallPrintText}
           dangerousTerms={dialogue.microscope.dangerousTerms}
-          onClose={() => setShowMicroscope(false)}
+          onClose={() => {
+            collectEvidence(['contract', 'lockup-clause']);
+            setShowMicroscope(false);
+          }}
         />
       )}
       {selectedRedFlag && (
         <RedFlagModal flag={selectedRedFlag} onClose={() => setSelectedRedFlag(null)} />
       )}
-      <LiveRegion message={lastScoreEvent ? describeScoreEvent(lastScoreEvent) : ''} />
     </main>
   );
 }
