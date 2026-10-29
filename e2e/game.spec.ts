@@ -22,7 +22,7 @@ test('restores progress after reload in the middle of a chapter', async ({ page 
   await page.getByRole('button', { name: 'Начать главу' }).first().click();
   await expect(page.getByRole('heading', { name: 'Пять золотых монет' })).toBeVisible();
   await revealText(page);
-  await page.getByRole('button', { name: /Выяснить, как их не отдать/ }).click();
+  await page.getByRole('button', { name: /Да! Я готов учиться!/ }).click();
   await page.getByRole('button', { name: 'Далее' }).click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Сверчок Джимини' })).toBeVisible();
@@ -32,7 +32,7 @@ test('wrong story choice shows feedback before continuing', async ({ page }) => 
   await startGame(page);
   await page.getByRole('button', { name: 'Начать главу' }).first().click();
   await revealText(page);
-  await page.getByRole('button', { name: /Потратить одну монету сразу/ }).click();
+  await page.getByRole('button', { name: /Может, сначала потрачу/ }).click();
   await expect(page.getByRole('heading', { name: 'Что произошло' })).toBeVisible();
   await expect(page.getByText(/слабее защищает деньги|Этот выбор/).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Что это значит' })).toBeVisible();
@@ -79,16 +79,16 @@ test('calculator rejects negative values and explains a loan', async ({ page }) 
   await page.getByLabel('Срок, месяцы').fill('-3');
   await expect(page.getByText('Сумма должна быть больше нуля.')).toBeVisible();
   await expect(page.getByText(/Срок — от 1 до 60/)).toBeVisible();
-  await expect(page.getByRole('button', { name: /Посчитать условия и идти дальше/ })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /Теперь всё ясно!/ })).toBeDisabled();
   await page.getByLabel('Сумма, ₽').fill('');
   await page.getByLabel('Сумма, ₽').fill('не число');
   await expect(page.getByText('Введи сумму числом больше нуля.')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Посчитать условия и идти дальше/ })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /Теперь всё ясно!/ })).toBeDisabled();
   await page.getByLabel('Сумма, ₽').fill('10000');
   await page.getByLabel('Срок, месяцы').fill('12');
   await expect(page.getByText('Сумма долга', { exact: true })).toBeVisible();
   await expect(page.getByText('Переплата', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Посчитать условия и идти дальше/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Теперь всё ясно!/ })).toBeEnabled();
 });
 
 test('map keeps later chapters locked until the first unfinished one is done', async ({ page }) => {

@@ -25,7 +25,7 @@ describe('DialogueScene calculator gate', () => {
     if (!skip.hasAttribute('disabled')) {
       await user.click(skip);
     }
-    const choice = await screen.findByRole('button', { name: /Посчитать условия и идти дальше/ });
+    const choice = await screen.findByRole('button', { name: /Теперь всё ясно!/ });
     await user.click(choice);
     const next = screen.getByRole('button', { name: 'Далее' });
     await user.clear(screen.getByLabelText('Сумма, ₽'));
@@ -57,7 +57,7 @@ describe('DialogueScene board shortcut', () => {
     if (!skip.hasAttribute('disabled')) {
       await user.click(skip);
     }
-    await user.click(await screen.findByRole('button', { name: /Уйти и вернуться завтра/ }));
+    await user.click(await screen.findByRole('button', { name: /Это обман, ухожу/ }));
     await user.click(screen.getByRole('button', { name: 'К доске дела' }));
     expect(useGameStore.getState().phase).toBe('caseBoard');
     expect(useGameStore.getState().currentDialogue).toBe(3);

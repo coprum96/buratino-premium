@@ -45,7 +45,7 @@ test('achievement unlocks once, persists, and closes from CTA or Escape', async 
   await page.getByRole('button', { name: 'Закрыть окно' }).click();
   await page.getByRole('button', { name: 'Отсутствие защиты и обучения' }).click();
   await page.getByRole('button', { name: 'Закрыть окно' }).click();
-  await page.getByRole('button', { name: /Выяснить, как их не отдать/ }).click();
+  await page.getByRole('button', { name: /Да! Я готов учиться!/ }).click();
   await page.getByRole('button', { name: 'Далее' }).click();
   if (await skip.isVisible() && await skip.isEnabled()) {
     await skip.click({ timeout: 1500 }).catch(() => undefined);
