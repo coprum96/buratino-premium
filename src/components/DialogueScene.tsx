@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isComicChapter2 } from '../config/visualFeatures';
 import { CHAPTER_META } from '../data/learningStages';
 import { characters, levels, type Choice, type RedFlagDetail } from '../data/gameData';
 import type { AppliedAftermath } from '../lib/choiceAftermath';
@@ -6,6 +7,7 @@ import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 import { useGameStore } from '../store/gameStore';
 import { sessionAnalytics } from '../utils/sessionAnalytics';
 import { ChoiceAftermath } from './ChoiceAftermath';
+import { GameScene } from './comic-scene/GameScene';
 import { LieDetector } from './LieDetector';
 import { LossCalculator } from './LossCalculator';
 import { MatchGame } from './MatchGame';
@@ -36,6 +38,7 @@ export function DialogueScene() {
     coins,
   } = useGameStore();
   const reducedMotion = usePrefersReducedMotion();
+  const comicSlice = isComicChapter2(currentLevel);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [showChoices, setShowChoices] = useState(false);
@@ -88,7 +91,7 @@ export function DialogueScene() {
     setSiteCompareReady(false);
     setShowTimer(true);
     setTimerCompleted(false);
-    if (reducedMotion) {
+    if (reducedMotion || comicSlice) {
       setDisplayedText(visibleText);
       setIsTyping(false);
       setShowChoices(true);
@@ -109,7 +112,7 @@ export function DialogueScene() {
       }
     }, 16);
     return () => window.clearInterval(timer);
-  }, [dialogue, visibleText, reducedMotion]);
+  }, [dialogue, visibleText, reducedMotion, comicSlice]);
 
   if (!level || !dialogue || !character) {
     return <div className="min-h-screen flex items-center justify-center">Загрузка...</div>;
@@ -182,6 +185,44 @@ export function DialogueScene() {
     });
     setPendingChoice(choice);
   };
+
+  if (comicSlice) {
+    return (
+      <>
+        <GameScene
+          chapterLabel={`Глава ${currentLevel + 1}`}
+          chapterTitle={meta?.title ?? level.title}
+          location="Ночная улица у театра"
+          speakerId={dialogue.character}
+          emotion={dialogue.emotion}
+          dialogueText={visibleText}
+          question={dialogue.question || 'Что ты сделаешь?'}
+          choices={dialogue.choices}
+          pendingChoice={pendingChoice}
+          appliedAftermath={appliedAftermath}
+          replay={isReplayingChapter}
+          presentation={dialogue.presentation}
+          redFlags={dialogue.redFlagsData}
+          lostCoinWarning={storyFlags.includes('lost-coin-karabas') && coins < 5}
+          nextDisabled={Boolean(dialogue.calculator && !calculatorReady)}
+          onChoice={handleChoice}
+          onContinue={() => pendingChoice && goNext(pendingChoice)}
+          onOpenBoard={appliedAftermath.newEvidenceIds.length > 0 && pendingChoice ? () => {
+            goNext(pendingChoice);
+            setPhase('caseBoard');
+          } : undefined}
+          onRedFlag={(flag) => {
+            useGameStore.getState().noteRedFlagOpen();
+            setSelectedRedFlag(flag);
+          }}
+          onCollectPresentation={() => collectEvidence(['promised-yield', 'golden-stage'])}
+        />
+        {selectedRedFlag && (
+          <RedFlagModal flag={selectedRedFlag} onClose={() => setSelectedRedFlag(null)} />
+        )}
+      </>
+    );
+  }
 
   return (
     <main className="min-h-screen pt-24 pb-10">

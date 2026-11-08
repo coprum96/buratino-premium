@@ -1,0 +1,55 @@
+.comic-scene {
+  --comic-bg: #071522;
+  --comic-surface: #111827;
+  --comic-amber: #e89a2b;
+  --comic-danger: #c7362f;
+  --comic-gold: #d6a84b;
+  --comic-paper: #f4e8d1;
+  --comic-paper-text: #25201c;
+  --comic-text: #f5f1e8;
+  --comic-muted: #8395a7;
+  --comic-safe: #2f6b55;
+
+  --comic-ease-scene: cubic-bezier(0.22, 1, 0.36, 1);
+  --comic-ease-evidence: cubic-bezier(0.16, 1, 0.3, 1);
+  --comic-duration-fast: 160ms;
+  --comic-duration-normal: 280ms;
+  --comic-duration-scene: 420ms;
+  --comic-duration-evidence: 900ms;
+  --comic-duration-coin: 560ms;
+
+  --comic-space-1: 0.25rem;
+  --comic-space-2: 0.5rem;
+  --comic-space-3: 0.75rem;
+  --comic-space-4: 1rem;
+  --comic-space-5: 1.25rem;
+  --comic-space-6: 1.5rem;
+
+  --comic-font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --comic-font-serif: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", serif;
+  --comic-body-size: 1.0625rem;
+  --comic-body-leading: 1.45;
+  --comic-measure: 38rem;
+
+  --comic-hud-height: 3.25rem;
+  --comic-safe-top: env(safe-area-inset-top, 0px);
+  --comic-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --comic-dialogue-max: 76%;
+
+  --comic-focus: #e89a2b;
+  --comic-radius-sm: 8px;
+  --comic-radius-md: 14px;
+  --comic-radius-lg: 22px;
+
+  --comic-shadow-hud: 0 8px 20px rgba(0, 0, 0, 0.35);
+  --comic-shadow-paper: 0 10px 24px rgba(0, 0, 0, 0.28);
+
+  --comic-z-bg: 0;
+  --comic-z-mid: 2;
+  --comic-z-char: 4;
+  --comic-z-ui: 8;
+  --comic-z-hud: 30;
+  --comic-z-fx: 36;
+  --comic-z-inspect: 40;
+  --comic-z-menu: 45;
+}

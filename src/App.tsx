@@ -15,6 +15,7 @@ import { ScenarioTest } from './components/ScenarioTest';
 import { SaveMigrationScreen } from './components/SaveMigrationScreen';
 import { StartScreen } from './components/StartScreen';
 import { StatsBar } from './components/StatsBar';
+import { isComicChapter2 } from './config/visualFeatures';
 import { setSoundMuted } from './lib/sound';
 import { useGameStore } from './store/gameStore';
 import type { AccessStatus } from './utils/accessControl';
@@ -22,6 +23,8 @@ import type { AccessStatus } from './utils/accessControl';
 function App() {
   const {
     phase,
+    currentLevel,
+    showMaterialsPanel,
     setAccessStatus,
     continueFromPaywall,
     pendingAchievementQueue,
@@ -39,6 +42,7 @@ function App() {
   const demoBadge = typeof window !== 'undefined'
     && new URLSearchParams(window.location.search).get('demo') === 'badge';
   const unlockId = demoBadge ? 'cool-head' : pendingAchievementQueue[0];
+  const comicSlice = phase === 'dialogue' && isComicChapter2(currentLevel);
 
   useEffect(() => {
     const unsub = useGameStore.persist.onFinishHydration(() => setHydrated(true));
@@ -72,9 +76,9 @@ function App() {
 
   return (
     <>
-      <div className="gradient-bg" />
-      {phase !== 'landing' && phase !== 'ending' && phase !== 'paywall' && <StatsBar />}
-      {phase !== 'paywall' && <MaterialsPanel />}
+      {!comicSlice && <div className="gradient-bg" />}
+      {!comicSlice && phase !== 'landing' && phase !== 'ending' && phase !== 'paywall' && <StatsBar />}
+      {(showMaterialsPanel || (!comicSlice && phase !== 'paywall')) && <MaterialsPanel />}
       {showDataPanel && canShowDataPanel && <DataExportPanel onClose={() => setShowDataPanel(false)} />}
 
       <div className="relative z-10">

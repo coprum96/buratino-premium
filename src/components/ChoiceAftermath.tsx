@@ -13,6 +13,7 @@ interface ChoiceAftermathProps {
   replay: boolean;
   applied: AppliedAftermath;
   nextDisabled?: boolean;
+  className?: string;
   onContinue: () => void;
   onOpenBoard?: () => void;
 }
@@ -23,6 +24,7 @@ export function ChoiceAftermath({
   replay,
   applied,
   nextDisabled,
+  className,
   onContinue,
   onOpenBoard,
 }: ChoiceAftermathProps) {
@@ -36,7 +38,7 @@ export function ChoiceAftermath({
   }, []);
 
   return (
-    <section className="surface-card mt-4" aria-labelledby="aftermath-happened">
+    <section className={`surface-card mt-4 ${className ?? ''}`} aria-labelledby="aftermath-happened">
       <h3 id="aftermath-happened" ref={headingRef} tabIndex={-1} className="font-bold mb-2 outline-none">
         Что произошло
       </h3>
@@ -61,7 +63,7 @@ export function ChoiceAftermath({
         <li><span className="font-semibold">5. В реальности.</span> {aftermath.nextStep}</li>
       </ol>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 comic-aftermath-actions">
         <button
           type="button"
           className="btn btn-primary"
