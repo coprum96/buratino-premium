@@ -36,6 +36,8 @@ export type SceneTransition = 'panel' | 'fade';
 
 export type LightingPreset = 'night-street' | 'interior';
 
+export type SceneCastMode = 'overlay' | 'embedded';
+
 export type SceneVisualConfig = {
   id: string;
   background: ResponsiveAsset;
@@ -45,4 +47,6 @@ export type SceneVisualConfig = {
   evidence?: EvidencePlacement[];
   lighting?: LightingPreset;
   transition?: SceneTransition;
+  /** Characters already painted into the background — do not overlay busts. */
+  castMode?: SceneCastMode;
 };

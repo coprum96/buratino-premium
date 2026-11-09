@@ -15,7 +15,7 @@ import { ScenarioTest } from './components/ScenarioTest';
 import { SaveMigrationScreen } from './components/SaveMigrationScreen';
 import { StartScreen } from './components/StartScreen';
 import { StatsBar } from './components/StatsBar';
-import { isComicChapter2 } from './config/visualFeatures';
+import { isComicChapter } from './config/visualFeatures';
 import { setSoundMuted } from './lib/sound';
 import { useGameStore } from './store/gameStore';
 import type { AccessStatus } from './utils/accessControl';
@@ -42,7 +42,7 @@ function App() {
   const demoBadge = typeof window !== 'undefined'
     && new URLSearchParams(window.location.search).get('demo') === 'badge';
   const unlockId = demoBadge ? 'cool-head' : pendingAchievementQueue[0];
-  const comicSlice = phase === 'dialogue' && isComicChapter2(currentLevel);
+  const comicSlice = phase === 'dialogue' && isComicChapter(currentLevel);
 
   useEffect(() => {
     const unsub = useGameStore.persist.onFinishHydration(() => setHydrated(true));

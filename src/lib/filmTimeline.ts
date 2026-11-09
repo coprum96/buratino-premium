@@ -18,7 +18,7 @@ export const FILM_SCENES: FilmSceneCue[] = [
   { id: 'scan', component: 'DetectorScanScene', startMs: 11000, endMs: 14000, caption: 'Срочность, сверхдоходность и давление группы — красные флаги.' },
   { id: 'verify', component: 'VerificationToolsScene', startMs: 14000, endMs: 20000, caption: 'Реестр ЦБ, лицензия, реквизиты, договор, расчёт.' },
   { id: 'decide', component: 'DecisionScene', startMs: 20000, endMs: 26000, caption: 'Небезопасный путь теряет монеты. Пауза сохраняет их.' },
-  { id: 'badge', component: 'BadgeUnlockScene', startMs: 26000, endMs: 32000, caption: 'Холодная голова. Решение принято без давления.' },
+  { id: 'badge', component: 'BadgeUnlockScene', startMs: 26000, endMs: 32000, caption: 'Пауза перед денежным решением. Решение принято без давления.' },
   { id: 'montage', component: 'ProgressMontageScene', startMs: 32000, endMs: 37000, caption: 'Главы, договор, калькулятор, проверка и галерея достижений.' },
   { id: 'payoff', component: 'FinalPayoffScene', startMs: 37000, endMs: 40000, caption: 'Золотой Детектор. Сначала проверь. Потом решай.' },
 ];

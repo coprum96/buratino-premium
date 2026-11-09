@@ -12,7 +12,7 @@ describe('AchievementUnlock accessibility', () => {
       <AchievementUnlock achievementId="cool-head" onClose={onClose} />
     );
 
-    const dialog = screen.getByRole('dialog', { name: 'Холодная голова' });
+    const dialog = screen.getByRole('dialog', { name: 'Пауза перед денежным решением' });
     expect(dialog).toBeInTheDocument();
     const results = await axe(container);
     expect(results.violations).toEqual([]);

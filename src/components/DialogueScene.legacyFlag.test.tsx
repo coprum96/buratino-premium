@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGameStore } from '../store/gameStore';
 
 vi.mock('../config/visualFeatures', () => ({
-  VISUAL_FEATURES: { comicChapter2: false },
+  VISUAL_FEATURES: { comicChapter1: false, comicChapter2: false, comicChapter3: false },
   COMIC_CHAPTER_LEVEL_ID: 1,
   isComicChapter2: () => false,
+  isComicChapter: () => false,
 }));
 
 import { DialogueScene } from './DialogueScene';

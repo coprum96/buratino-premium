@@ -14,6 +14,7 @@ interface ChoiceAftermathProps {
   applied: AppliedAftermath;
   nextDisabled?: boolean;
   className?: string;
+  compact?: boolean;
   onContinue: () => void;
   onOpenBoard?: () => void;
 }
@@ -25,6 +26,7 @@ export function ChoiceAftermath({
   applied,
   nextDisabled,
   className,
+  compact = false,
   onContinue,
   onOpenBoard,
 }: ChoiceAftermathProps) {
@@ -54,14 +56,23 @@ export function ChoiceAftermath({
         {replay && <li>Повтор: репутация, монеты и улики не начисляются снова.</li>}
       </ul>
 
-      <h3 className="font-bold mb-2">Что это значит</h3>
-      <ol className="mb-4 space-y-2 leading-relaxed">
-        <li><span className="font-semibold">1. Что произошло.</span> {aftermath.happened}</li>
-        <li><span className="font-semibold">2. Сигнал.</span> {aftermath.signal}</li>
-        <li><span className="font-semibold">3. Подтверждает.</span> {aftermath.confirms}</li>
-        <li><span className="font-semibold">4. Пока не доказывает.</span> {aftermath.doesNotProve}</li>
-        <li><span className="font-semibold">5. В реальности.</span> {aftermath.nextStep}</li>
-      </ol>
+      {compact ? (
+        <div className="mb-4 space-y-2 leading-relaxed">
+          <p><span className="font-semibold">Сигнал.</span> {aftermath.signal}</p>
+          <p><span className="font-semibold">Дальше.</span> {aftermath.nextStep}</p>
+        </div>
+      ) : (
+        <>
+          <h3 className="font-bold mb-2">Что это значит</h3>
+          <ol className="mb-4 space-y-2 leading-relaxed">
+            <li><span className="font-semibold">1. Что произошло.</span> {aftermath.happened}</li>
+            <li><span className="font-semibold">2. Сигнал.</span> {aftermath.signal}</li>
+            <li><span className="font-semibold">3. Подтверждает.</span> {aftermath.confirms}</li>
+            <li><span className="font-semibold">4. Пока не доказывает.</span> {aftermath.doesNotProve}</li>
+            <li><span className="font-semibold">5. В реальности.</span> {aftermath.nextStep}</li>
+          </ol>
+        </>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-3 comic-aftermath-actions">
         <button

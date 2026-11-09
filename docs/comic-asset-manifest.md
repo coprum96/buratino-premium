@@ -4,6 +4,12 @@
 
 Character bible — reference sheet, не sprite sheet. В игре не показывается.
 
+Дополнительно для глав 1 и 3:
+- `bg-workshop-attic-*.webp` — чердак/мастерская (из референса пролога)
+- `bg-investigation-desk-*.webp` — стол расследования (временный тон из того же кадра)
+- `char-mentor-*.webp` — bust сверчка (crop из пролога)
+- `char-detective-workshop.webp` — bust Буратино из пролога
+
 ## Фоны
 
 | Файл | Назначение | Размер | Aspect | Прозрачность | Anchor | Safe area | Вес | Статус | Fallback |

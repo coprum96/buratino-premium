@@ -22,8 +22,8 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
   },
   {
     id: 'cool-head',
-    title: 'Холодная голова',
-    description: 'Ты поставил паузу вместо решения под давлением.',
+    title: 'Пауза перед денежным решением',
+    description: 'Ты остановился до перевода и не отдал решение срочности.',
     condition: 'Выбрать паузу или независимую проверку в сюжете',
     asset: '/img/character_buratino_cautious.png',
     rarity: 'rare',

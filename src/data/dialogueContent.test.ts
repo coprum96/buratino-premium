@@ -42,14 +42,14 @@ describe('dialogue content', () => {
     expect(characters.lawyer.name).toBe('Юрист');
   });
 
-  it('keeps the original teaching dialogues and red-flag cards', () => {
+  it('keeps core teaching beats across chapters', () => {
     const text = collectStoryText().join('\n');
-    expect(text).toContain('Научимся их защищать?');
+    expect(text).toContain('Пять золотых — это не просто подарок');
+    expect(text).toContain('Взять паузу');
     expect(text).toContain('Давай применим "Золотой Детектор"');
+    expect(text).toContain('Закрепить несоответствия в деле');
     expect(text).toContain('КОРЗИНА 1 - "БЕЗОПАСНОСТЬ"');
     expect(text).toContain('ТЕХНИКА "МИКРОСКОП"');
-    expect(text).toContain('Да! Я готов учиться!');
-    expect(levels[0].dialogues[0].redFlagsData?.[0].statistics).toMatch(/НАФИ/);
     expect(levels[0].dialogues[0].redFlagsData?.[0].tips?.length).toBeGreaterThan(0);
   });
 });

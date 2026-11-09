@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isComicChapter2 } from '../config/visualFeatures';
+import { isComicChapter } from '../config/visualFeatures';
 import { CHAPTER_META } from '../data/learningStages';
 import { characters, levels, type Choice, type RedFlagDetail } from '../data/gameData';
 import type { AppliedAftermath } from '../lib/choiceAftermath';
@@ -38,7 +38,7 @@ export function DialogueScene() {
     coins,
   } = useGameStore();
   const reducedMotion = usePrefersReducedMotion();
-  const comicSlice = isComicChapter2(currentLevel);
+  const comicSlice = isComicChapter(currentLevel);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [showChoices, setShowChoices] = useState(false);
@@ -56,8 +56,12 @@ export function DialogueScene() {
   });
   const [calculatorReady, setCalculatorReady] = useState(false);
   const [siteCompareReady, setSiteCompareReady] = useState(false);
+  const [interactionReady, setInteractionReady] = useState(true);
   const handleCalculatorValidity = useCallback((ok: boolean) => {
     setCalculatorReady(ok);
+  }, []);
+  const handleInteractionReady = useCallback((ok: boolean) => {
+    setInteractionReady(ok);
   }, []);
 
   const level = levels[currentLevel];
@@ -88,7 +92,10 @@ export function DialogueScene() {
     if (!dialogue) return;
     setPendingChoice(null);
     setCalculatorReady(!dialogue.calculator);
-    setSiteCompareReady(false);
+    setSiteCompareReady(!dialogue.siteCompare);
+    const needsPrologue = comicSlice && currentLevel === 0 && currentDialogue === 0;
+    const needsComicGate = comicSlice && (Boolean(dialogue.calculator) || Boolean(dialogue.siteCompare) || needsPrologue);
+    setInteractionReady(!needsComicGate);
     setShowTimer(true);
     setTimerCompleted(false);
     if (reducedMotion || comicSlice) {
@@ -151,8 +158,9 @@ export function DialogueScene() {
 
   const handleChoice = (choice: Choice) => {
     if (pendingChoice) return;
-    if (dialogue.calculator && !calculatorReady) return;
-    if (dialogue.siteCompare && !siteCompareReady) return;
+    if (comicSlice && !interactionReady) return;
+    if (dialogue.calculator && !calculatorReady && !comicSlice) return;
+    if (dialogue.siteCompare && !siteCompareReady && !comicSlice) return;
     sessionAnalytics.trackDialogueChoice(
       currentLevel,
       currentDialogue,
@@ -187,12 +195,14 @@ export function DialogueScene() {
   };
 
   if (comicSlice) {
+    const gateBlocked = !interactionReady;
     return (
       <>
         <GameScene
+          levelId={currentLevel}
+          dialogueIndex={currentDialogue}
           chapterLabel={`Глава ${currentLevel + 1}`}
           chapterTitle={meta?.title ?? level.title}
-          location="Ночная улица у театра"
           speakerId={dialogue.character}
           emotion={dialogue.emotion}
           dialogueText={visibleText}
@@ -204,7 +214,11 @@ export function DialogueScene() {
           presentation={dialogue.presentation}
           redFlags={dialogue.redFlagsData}
           lostCoinWarning={storyFlags.includes('lost-coin-karabas') && coins < 5}
-          nextDisabled={Boolean(dialogue.calculator && !calculatorReady)}
+          showPrologueTable={currentLevel === 0 && currentDialogue === 0}
+          showYieldCalc={currentLevel === 2 && Boolean(dialogue.calculator)}
+          showSiteCompare={currentLevel === 2 && Boolean(dialogue.siteCompare)}
+          showOfferObjects={currentLevel === 1 && currentDialogue <= 1}
+          nextDisabled={gateBlocked}
           onChoice={handleChoice}
           onContinue={() => pendingChoice && goNext(pendingChoice)}
           onOpenBoard={appliedAftermath.newEvidenceIds.length > 0 && pendingChoice ? () => {
@@ -216,6 +230,7 @@ export function DialogueScene() {
             setSelectedRedFlag(flag);
           }}
           onCollectPresentation={() => collectEvidence(['promised-yield', 'golden-stage'])}
+          onGateReady={handleInteractionReady}
         />
         {selectedRedFlag && (
           <RedFlagModal flag={selectedRedFlag} onClose={() => setSelectedRedFlag(null)} />
